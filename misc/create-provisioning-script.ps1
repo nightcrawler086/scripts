@@ -50,6 +50,19 @@ BEGIN {
 		WO "`r`n" | Tee-Object $OUTFILE -Append
 	}
 
+	function Write-DrIntCreateCommands {
+		$SUBSET = $CSVDATA | Sort-Object -Property TargetDrIp -Unique
+		WO "### Cob (Dr)Interface Creation Commands`r`n" | Tee-Object $OUTFILE -Append
+		WO "**<MASK>, <BROADCAST>, and <INT_NAME> need to be filled in manually**`r`n" | Tee-Object $OUTFILE -Append
+		WO "``````" | Tee-Object $OUTFILE -Append
+		ForEach ($OBJ in $SUBSET) {
+			WO "server_ifconfig $($OBJ.TargetDrDM) -create -device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetDrIp) <MASK> <BROADCAST>" | Tee-Object $OUTFILE -Append
+		}
+		WO "``````" | Tee-Object $OUTFILE -Append
+		WO "`r`n" | Tee-Object $OUTFILE -Append
+		
+	}
+
 	function Write-VdmCreateCommands {
 		$SUBSET = $CSVDATA | Sort-Object -Property TargetVdm -Unique
 		WO "### VDM Creation Commands`r`n" | Tee-Object $OUTFILE -Append
@@ -252,7 +265,7 @@ BEGIN {
 		WO "``````" | Tee-Object $OUTFILE -Append
 	}
 
-	function Write-NfsLdapCommands {
+	function Write-NfsDmLdapCommands {
 		$SUBSET = $CSVDATA | Sort-Object -Property TargetVdm -Unique
 		WO "### NFS LDAP Commands`r`n" | Tee-Object $OUTFILE -Append
 		WO "**First check to see if LDAP is configured on the physical datamover**`r`n" | Tee-Object $OUTFILE -Append
@@ -270,7 +283,20 @@ BEGIN {
 		WO "``````" | Tee-Object $OUTFILE -Append
 	}
 
-	# Add VDM LDAP configuration in separate function???
+	function Write-NfsVdmLdapCommands {
+		$SUBSET = $CSVDATA | Sort-Object -Property TargetVdm -Unique
+		ForEach ($OBJ in $SUBSET) {
+		WO "### NFS VDM LDAP Commands`r`n" | Tee-Object $OUTFILE -Append
+		WO "``````" | Tee-Object $OUTFILE -Append
+		WO "vi /nasmcd/quota/slot_X/root_vdm_X/.etc/ldap.conf`r`n" | Tee-Object $OUTFILE -Append
+		WO "``````" | Tee-Object $OUTFILE -Append
+		WO "**Write the following information into the ``ldap.conf`` file`r`n" | Tee-Object $OUTFILE -Append
+		WO "``````" | Tee-Object $OUTFILE -Append
+		WO "nss_bas_passwd <LDAP_DN>" | Tee-Object $OUTFILE -Append
+		WO "nss_bas_group <LDAP_DN>" | Tee-Object $OUTFILE -Append
+		WO "nss_base_netgrouop <LDAP_DN>" | Tee-Object $OUTFILE -Append
+		}
+	}
 
 
 
