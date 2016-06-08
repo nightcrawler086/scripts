@@ -215,7 +215,7 @@ BEGIN {
 					CommandType = prdFsCkpt;
 					CommandString = $CMD2
 				}
-				$DMNUM = $($OBJ.TargetDm)(7)
+				$DMNUM = $($OBJ.TargetDm).Substring(7)
 				$CMD3 = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
