@@ -14,6 +14,7 @@ BEGIN {
 
 	# To do:
 	#
+	# Add quotes around command types
 	# Finish Adding LDAP commands
 	# Add SPN commands
 	# Derive Interface Name from info in the spreadsheet (using a bunch of substrings)
@@ -82,16 +83,16 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdVdmCreate;
-					CommandString = $CMD0
+					CommandType = "prdVdmCreate";
+					CommandString = "$CMD0"
 				} 
 				$CMD1 = "nas_server -vdm $($OBJ.TargetVDM) -attach <INT_NAME>"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdVdmAttachInt;
-					CommandString = $CMD1
+					CommandType = "prdVdmAttachInt";
+					CommandString = "$CMD1"
 				} 
 			} 
 
@@ -101,16 +102,16 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdVdmRep;
-					CommandString = $CMD2
+					CommandType = "prdVdmRep";
+					CommandString = "$CMD2"
 				}
 				$CMD3 = "nas_server -vdm $($OBJ.TargetVDM) -attach <INT_NAME>"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = drVdmAttachInt;
-					CommandString = $CMD3
+					CommandType = "drVdmAttachInt";
+					CommandString = "$CMD3"
 				}
 			}
 		}
@@ -125,8 +126,8 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdIntCreate;
-					CommandString = $CMD
+					CommandType = "prdIntCreate";
+					CommandString = "$CMD"
 				}
 			}
 		}
@@ -139,8 +140,8 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = drIntCreate;
-					CommandString = $CMD
+					CommandType = "drIntCreate";
+					CommandString = "$CMD"
 				}
 			}
 		}
@@ -155,8 +156,8 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdCifsCreate;
-					CommandString = $CMD0
+					CommandType = "prdCifsCreate";
+					CommandString = "$CMD0"
 				}
 
 				$CMD1 = "server_cifs $($OBJ.TargetCifsServer) -join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=<ADMIN_USER>,ou=Servers:ou-NAS:ou=INFRA"
@@ -164,8 +165,8 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdCifsJoin;
-					CommandString = $CMD1
+					CommandType = "prdCifsJoin";
+					CommandString = "$CMD1"
 				}
 			}
 		}
@@ -180,8 +181,8 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdNfsLdap;
-					CommandString = $CMD
+					CommandType = "prdNfsLdap";
+					CommandString = "$CMD"
 				}
 			}	
 		}
@@ -196,24 +197,24 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdFsCreate;
-					CommandString = $CMD0
+					CommandType = "prdFsCreate";
+					CommandString = "$CMD0"
 				}
 				$CMD1 = "fs_dedupe -modify $($OBJ.TargetFilesystem) -state on"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdFsDedupe;
-					CommandString = $CMD1
+					CommandType = "prdFsDedupe";
+					CommandString = "$CMD1"
 				}
 				$CMD2 = "nas_ckpt_schedule -create $($OBJ.TargetFilesystem)_DAILY_SCHED -filesystem $($OBJ.TargetFilesystem) -description ""1730hrs daily checkpoint schedule for $($OBJ.TargetFilesystem)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:30 -keep 7"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdFsCkpt;
-					CommandString = $CMD2
+					CommandType = "prdFsCkpt";
+					CommandString = "$CMD2"
 				}
 				$DMNUM = $($OBJ.TargetDm).Substring(7)
 				$CMD3 = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
@@ -221,16 +222,16 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdFsQtree;
-					CommandString = $CMD3
+					CommandType = "prdFsQtree";
+					CommandString = "$CMD3"
 				}
 				$CMD4 = "server_mount $($OBJ.TargetVDM) $($OBJ.TargetFilesystem) /$($OBJ.TargetFilesystem)"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdFsMnt;
-					CommandString = $CMD4
+					CommandType = "prdFsMnt";
+					CommandString = "$CMD4"
 				}
 			}
 			If ($($OBJ.TargetProtocol) -eq "CIFS" -or $($OBJ.TargetProtocol) -eq "BOTH") {
@@ -239,8 +240,8 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdCifsExport;
-					CommandString = $CMD5
+					CommandType = "prdCifsExport";
+					CommandString = "$CMD5"
 				}
 			}
 			If ($($OBJ.TargetProtocol) -eq "NFS" -or $($OBJ.TargetProtocol) -eq "BOTH") {
@@ -249,8 +250,8 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdNfsExport;
-					CommandString = $CMD6
+					CommandType = "prdNfsExport";
+					CommandString = "$CMD6"
 				}
 			}
 			If ($($OBJ.TargetDrFilesystem) -ne $NULL -or $($OBJ.TargetDrFilesystem) -ne "N/A") {
@@ -259,32 +260,32 @@ BEGIN {
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = prdFsRep;
-					CommandString = $CMD7
+					CommandType = "prdFsRep";
+					CommandString = "$CMD7"
 				}
 				$CMD8 = "nas_fs -name $($OBJ.TargetDrFilesystem) -create samesize:$($OBJ.TargetFilesystem):$($OBJ.TargetVDM) pool:$($OBJ.TargetDrStoragePool)" 
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = drFsCreate;
-					CommandString = $CMD8
+					CommandType = "drFsCreate";
+					CommandString = "$CMD8"
 				}
 				$CMD9 = "server_mount $($OBJ.TargetVDM) -o ro $($OBJ.TargetDrFilesystem) /$($OBJ.TargetDrFilesystem)"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = drFsMnt;
-					CommandString = $CMD9
+					CommandType = "drFsMnt";
+					CommandString = "$CMD9"
 				}
 				$CMD10 = "nas_ckpt_schedule -create $($OBJ.TargetDrFilesystem)_DAILY_SCHED -filesystem $($OBJ.TargetDrFilesystem) -description ""1730hrs daily checkpoint schedule for $($OBJ.TargetDrFilesystem)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:30 -keep 7"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = drFsCkpt;
-					CommandString = $CMD10
+					CommandType = "drFsCkpt";
+					CommandString = "$CMD10"
 				}
 			}
 		}
