@@ -4,7 +4,10 @@ Param (
 	 [string[]]$SourceSystem,
 
 	[Parameter(Mandatory=$True,Position=2)]
-	 [string]$CsvFile
+	 [string]$CsvFile,
+
+	[Parameter(Mandatory=$False,Position=3)]
+	 [string]$OutFormat
 
 )
 
@@ -15,6 +18,13 @@ BEGIN {
 }
 
 PROCESS {
+	# To do:
+	#
+	# Create Different output formats (CSV, TXT (makrdown-style), and HTML)
+	# Add Replication configuration commands
+	# Re-check NFS commands (LDAP, Export creation)
+	# For some reason the "N/A" section of the If statements don't work...fix that
+	#
 	# If no SourceSystem specified, ask to perform for all systems
 	If ($SourceSystem -eq $NULL) {
 		Write-Host "No source system specified..."
@@ -228,7 +238,7 @@ PROCESS {
 				CommandType = "prdFsRep";
 				CommandString = "$CMDSTR"
 			}
-			$CMDSTR = "nas_fs -name $($OBJ.TargetDrFilesystem) -create samesize:$($OBJ.TargetFilesystem):$($OBJ.TargetVDM) pool:$($OBJ.TargetDrStoragePool)" 
+			$CMDSTR = "nas_fs -name $($OBJ.TargetDrFilesystem) -create samesize:$($OBJ.TargetFilesystem):cel:$($OBJ.TargetDrSystem) pool:$($OBJ.TargetDrStoragePool)" 
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -257,5 +267,6 @@ PROCESS {
 }
 
 END {
+	
 	$OUTPUT
 }
