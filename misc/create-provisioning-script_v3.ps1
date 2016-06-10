@@ -169,15 +169,25 @@ PROCESS {
 				CommandString = "$CMD"
 			}
 			If ($($OBJ.TargetDm) -ne $NULL -or $($OBJ.TargetDm) -ne "N/A") {
-				$DMNUM = $($OBJ.TargetDm).Substring(7)
-			}
-			$CMD = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "prdFsQtree";
-				CommandString = "$CMD"
+				$TGTDM = $($OBJ.TargetDm)
+				$DMNUM = $TGTDM.Substring(7)
+				$CMD = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
+				$OUTPUT += New-Object -TypeName PSObject -Property @{
+					SourceSystem = $OBJ.SourceSystem;
+					TargetSystem = $OBJ.TargetSystem;
+					TargetDrSystem = $OBJ.TargetDrSystem;
+					CommandType = "prdFsQtree";
+					CommandString = "$CMD"
+				} 
+			} Else {
+				$CMD = "mkdir /nasmcd/quota/slot_X/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
+				$OUTPUT += New-Object -TypeName PSObject -Property @{
+					SourceSystem = $OBJ.SourceSystem;
+					TargetSystem = $OBJ.TargetSystem;
+					TargetDrSystem = $OBJ.TargetDrSystem;
+					CommandType = "prdFsQtree";
+					CommandString = "$CMD"
+				} 
 			}
 			$CMD = "server_mount $($OBJ.TargetVDM) $($OBJ.TargetFilesystem) /$($OBJ.TargetFilesystem)"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
