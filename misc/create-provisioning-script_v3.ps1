@@ -80,7 +80,7 @@ PROCESS {
 	ForEach ($OBJ in $SUBSET) {
 		If ($($OBJ.TargetIp) -ne $NULL -or $($OBJ.TargetIp) -ne "N/A") {
 			# Generate Prod Interface Configuration Commands
-			$CMD = "server_ifconfig $($OBJ.TargetDM) -create -device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetIp) <MASK> <BROADCAST>" 		
+			$CMD = "server_ifconfig $($OBJ.TargetDM) -create -Device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetIp) <MASK> <BROADCAST>" 		
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -94,7 +94,7 @@ PROCESS {
 	ForEach ($OBJ in $SUBSET) {
 		If ($($OBJ.TargetDrIp) -ne $NULL -or $($OBJ.TargetDrIp) -ne "N/A") {
 			# Generate Cob(DR) Interface Configuration Commands
-			$CMD = "server_ifconfig $($OBJ.TargetDrDM) -create -device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetDrIp) <MASK> <BROADCAST>" 		
+			$CMD = "server_ifconfig $($OBJ.TargetDrDM) -create -Device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetDrIp) <MASK> <BROADCAST>" 		
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -117,7 +117,7 @@ PROCESS {
 				CommandString = "$CMD"
 			}
 			# Generate Prod Join CIFS Server Commands 
-			$CMD = "server_cifs $($OBJ.TargetCifsServer) -join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=<ADMIN_USER>,ou=Servers:ou-NAS:ou=INFRA"
+			$CMD = "server_cifs $($OBJ.TargetCifsServer) -Join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=<ADMIN_USER>,ou="Servers:ou=NAS:ou=INFRA""
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -168,6 +168,7 @@ PROCESS {
 				CommandType = "prdFsCkpt";
 				CommandString = "$CMD"
 			}
+			# Qtree commands
 			If ($($OBJ.TargetDm) -ne $NULL -or $($OBJ.TargetDm) -ne "N/A") {
 				$TGTDM = $($OBJ.TargetDm)
 				$DMNUM = $TGTDM.Substring(7)
@@ -199,7 +200,7 @@ PROCESS {
 			}
 		}
 		If ($($OBJ.TargetProtocol) -eq "CIFS" -or $($OBJ.TargetProtocol) -eq "BOTH") {
-			$CMD5 = "server_export $($OBJ.TargetVDM) -protocol cifs -name $($OBJ.TargetFilesystem) -o netbios=$($OBJ.TargetVDM) /$($OBJ.TargetFilesystem)/$($OBJ.TargetFilesystem)"
+			$CMD5 = "server_export $($OBJ.TargetVDM) -Protocol cifs -name $($OBJ.TargetFilesystem) -o netbios=$($OBJ.TargetVDM) /$($OBJ.TargetFilesystem)/$($OBJ.TargetFilesystem)"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -209,7 +210,7 @@ PROCESS {
 			}
 		}
 		If ($($OBJ.TargetProtocol) -eq "NFS" -or $($OBJ.TargetProtocol) -eq "BOTH") {
-			$CMD = "server_export $($OBJ.TargetVDM) -protocol nfs -name $($OBJ.TargetFilesystem) -o rw=<CLIENTS>,ro=<CLIENTS>,root=<CLIENTS> /$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
+			$CMD = "server_export $($OBJ.TargetVDM) -Protocol nfs -name $($OBJ.TargetFilesystem) -o rw=<CLIENTS>,ro=<CLIENTS>,root=<CLIENTS> /$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
