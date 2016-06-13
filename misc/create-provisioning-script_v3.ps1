@@ -42,10 +42,13 @@ PROCESS {
 	If ($SourceSystem -ne $NULL) {
 		$ALLSYSTEMS = Import-Csv -Path $CsvFile | Where-Object {$_.SourceSystem -eq "$SourceSystem"}
 	}
+
 	# Create commands and append them to the $OUTPUT array
-	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetVdm -Unique
+	# This SUBSET is sufficiently filtered for VDM Creation commands on the target production side
+	$SUBSET = $ALLSYSTEMS | 
+		Where-Object {$_.TargetSystem -ne "N/A" -or $_.TargetSystem -ne "" -and $_.TargetVdm -ne "N/A" -or $_.TargetVdm -ne ""} | 
+			Sort-Object -Property TargetVdm -Unique
 	ForEach ($OBJ in $SUBSET) {
-		If ($($OBJ.TargetVdm) -ne $NULL -or $($OBJ.TargetVdm) -ne "N/A") {
 			# Generate Prod VDM Creation Commands
 			$CMDSTR = "nas_server -name $($OBJ.TargetVDM) -type vdm -create $($OBJ.TargetDM) -setstate loaded pool=$($OBJ.TargetStoragePool)"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
@@ -65,7 +68,10 @@ PROCESS {
 				CommandString = "$CMDSTR"
 			} 
 		}
-		If ($($OBJ.TargetDrSystem) -ne $NULL -or $($OBJ.TargetDrSystem -ne "N/A")) {
+	$SUBSET = $ALLSYSTEMS | 
+		Where-Object {$_.TargetDrSystem -ne "N/A" -or $_.TargetDrSystem -ne "" -and $_.TargetDrVdm -ne "N/A" -or $_.TargetDrVdm -ne ""} | 
+			Sort-Object -Property TargetDrSystem,TargetDrVdm -Unique
+	ForEach ($OBJ in $SUBSET) {
 			# Generate Cob(DR) VDM Creation Commands
 			$CMDSTR = "nas_replicate -create $($OBJ.TargetVDM)_REP -source -vdm $($OBJ.TargetVDM) -destination -pool id=<POOL_ID> -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
@@ -85,7 +91,34 @@ PROCESS {
 				CommandString = "$CMDSTR"
 			}
 		}
-	}
+	$SUBSET = $ALLSYSTEMS | 
+		Where-Object {$_.TargetSystem -ne "N/A" -or $_.TargetSystem -ne "" -and $_.TargetDrSystem -ne "N/A" -or $_.TargetDrSystem -ne ""} | 
+			Sort-Object TargetSystem,TargetDm,TargetDrSystem,TargetDrDm -Unique
+	ForEach ($OBJ in $SUBSET) {
+			$TGTLOC = $($OBJ.TargetSystem)Substring(0,3)
+			$TGTDRLOC = $($OBJ.TargetDrSystem)Substring(0,3)
+			# Create Replication Passphrase on Source System
+			$CMDSTR = "nas_cel -create $($OBJ.TargetSystem) -ip <REP_IP> -passphrase <REP_PASS>"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdRepPass";
+				CommandString = "$CMDSTR"
+			}
+			# Create Replication Passphrase on DestinationSystem
+			$CMDSTR = "nas_cel -create $($OBJ.TargetDrSystem) -ip <REP_IP> -passphrase <REP_PASS>"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "drRepPass";
+				CommandString = "$CMDSTR"
+			}
+		}
+	# ***** Left off here *****
+	# Need to revise filtering in $SUBSET definition
+	# Should be $ALLSYSTEMS | Where <something> | sort -property <props> -Unique
 	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetIp -Unique
 	ForEach ($OBJ in $SUBSET) {
 		If ($($OBJ.TargetIp) -ne $NULL -or $($OBJ.TargetIp) -ne "N/A") {
@@ -180,8 +213,7 @@ PROCESS {
 			}
 			# Qtree commands
 			If ($($OBJ.TargetDm) -ne $NULL -or $($OBJ.TargetDm) -ne "N/A") {
-				$TGTDM = $($OBJ.TargetDm)
-				$DMNUM = $TGTDM.Substring(7)
+				$DMNUM = $($OBJ.TargetDm).Substring(7)
 				$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
