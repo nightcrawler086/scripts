@@ -14,7 +14,37 @@ Param (
 BEGIN {
 	
 	$OUTPUT = @()
+	
+	function WO($TXT) {
+		Invoke-Expression ("Write-Output " + $TXT)
+	}
 
+	function Text-Output {
+		$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
+		$SUBSET = $OUTPUT | Select-Object -ExpandProperty SourceSystem -Unique
+		ForEach ($OBJ in $SUBSET) {
+			WO "# Provisioning Script for $($OBJ.SourceSystem)`r`n" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+		}
+		WO "`r`n## Target Production VDM Creation Commands`r`n"
+		WO "``````"
+		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdVdmCreate"}
+		ForEach ($OBJ in $SUBSET) {
+			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+		}
+		WO "``````"
+		WO "`r`n## Target Production Interface Creation Commands`r`n"
+		WO "``````"
+		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdIntCreate"}
+		ForEach ($OBJ in $SUBSET) {
+			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+		}
+		WO "``````"
+		WO "`r`n## Target Production VDM Attach Interface Commands`r`n"
+		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdVdmAttachInt"}
+		ForEach ($OBJ in $SUBSET) {
+			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+		}
+		WO "``````"
 }
 
 PROCESS {
@@ -332,6 +362,19 @@ PROCESS {
 }
 
 END {
+
+	# Write to Text File
+	If ($OutFormat -eq "TXT") {
+		$OUTFILE = ".\${TIMESTAMP}_${SourceSystem}-provisioning-script.txt"
+		WO "### VDM Creation Commands`r`n" | Tee-Object $OUTFILE -Append
+		WO "``````" | Tee-Object $OUTFILE -Append
+		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdVdmCreate"}
+		ForEach ($OBJ in $SUBSET) {
+			WO $($OBJ.CommandString) | Tee-Object $OUTFILE -Append
+		}
+		WO "``````" | Tee-Object $OUTFILE -Append
+
+	}
 	
 	$OUTPUT
 }
