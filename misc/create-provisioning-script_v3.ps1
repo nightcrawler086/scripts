@@ -46,7 +46,7 @@ PROCESS {
 	# Create commands and append them to the $OUTPUT array
 	# This SUBSET is sufficiently filtered for VDM Creation commands on the target production side
 	$SUBSET = $ALLSYSTEMS | 
-		Where-Object {$_.TargetSystem -ne "N/A" -or $_.TargetSystem -ne "" -and $_.TargetVdm -ne "N/A" -or $_.TargetVdm -ne ""} | 
+		Where-Object {$_.TargetSystem -notlike "N/A" -or $_.TargetSystem -ne "" -and $_.TargetVdm -notlike "N/A" -or $_.TargetVdm -ne ""} | 
 			Sort-Object -Property TargetVdm -Unique
 	ForEach ($OBJ in $SUBSET) {
 			# Generate Prod VDM Creation Commands
@@ -69,7 +69,7 @@ PROCESS {
 			} 
 		}
 	$SUBSET = $ALLSYSTEMS | 
-		Where-Object {$_.TargetDrSystem -ne "N/A" -or $_.TargetDrSystem -ne "" -and $_.TargetDrVdm -ne "N/A" -or $_.TargetDrVdm -ne ""} | 
+		Where-Object {$_.TargetDrSystem -notlike "N/A" -or $_.TargetDrSystem -ne "" -and $_.TargetDrVdm -notlike "N/A" -or $_.TargetDrVdm -ne ""} | 
 			Sort-Object -Property TargetDrSystem,TargetDrVdm -Unique
 	ForEach ($OBJ in $SUBSET) {
 			# Generate Cob(DR) VDM Creation Commands
@@ -92,17 +92,21 @@ PROCESS {
 			}
 		}
 	$SUBSET = $ALLSYSTEMS | 
-		Where-Object {$_.TargetSystem -ne "N/A" -or $_.TargetSystem -ne "" -and $_.TargetDrSystem -ne "N/A" -or $_.TargetDrSystem -ne ""} | 
+		Where-Object {$_.TargetSystem -notlike "N/A" -or $_.TargetSystem -ne "" -and $_.TargetDrSystem -notlike "N/A" -or $_.TargetDrSystem -ne ""} | 
 			Sort-Object TargetSystem,TargetDm,TargetDrSystem,TargetDrDm -Unique
 	ForEach ($OBJ in $SUBSET) {
 			$TGTSYS = $($OBJ.TargetSystem)
 			$TGTLOC = $TGTSYS.Substring(0,3)
 			$TGTDRSYS = $($OBJ.TargetDrSystem)
 			$TGTDRLOC = $TGTDRSYS.Substring(0,3)
-			$TGTDM = $($OBJ.TargetDm)
-			$TGTDMNUM = $TGTDM.Substring(7)
-			$TGTDRDM = $($OBJ.TargetDrDm)
-			$TGTDRDMNUM = $TGTDRDM.Substring(7)
+			If ($($OBJ.TargetDm) -notlike "N/A" -or $($OBJ.TargetDm) -ne "") {
+				$TGTDM = $($OBJ.TargetDm)
+				$TGTDMNUM = $TGTDM.Substring(7)
+			}
+			If ($($OBJ.TargetDrDm) -notlike "N/A" -or $($OBJ.TargetDrDm) -ne "") {
+				$TGTDRDM = $($OBJ.TargetDrDm)
+				$TGTDRDMNUM = $TGTDRDM.Substring(7)
+			}
 			# Create Replication Passphrase on Source System
 			$CMDSTR = "nas_cel -create $($OBJ.TargetSystem) -ip <REP_IP> -passphrase <REP_PASS>"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
@@ -145,7 +149,7 @@ PROCESS {
 	# Should be $ALLSYSTEMS | Where <something> | sort -property <props> -Unique
 	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetIp -Unique
 	ForEach ($OBJ in $SUBSET) {
-		If ($($OBJ.TargetIp) -ne $NULL -or $($OBJ.TargetIp) -ne "N/A") {
+		If ($($OBJ.TargetIp) -ne "" -or $($OBJ.TargetIp) -notlike "N/A") {
 			# Generate Prod Interface Configuration Commands
 			$CMDSTR = "server_ifconfig $($OBJ.TargetDM) -create -Device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetIp) <MASK> <BROADCAST>" 		
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
@@ -159,7 +163,7 @@ PROCESS {
 	}
 	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetDrIp -Unique
 	ForEach ($OBJ in $SUBSET) {
-		If ($($OBJ.TargetDrIp) -ne $NULL -or $($OBJ.TargetDrIp) -ne "N/A") {
+		If ($($OBJ.TargetDrIp) -ne "" -or $($OBJ.TargetDrIp) -notlike "N/A") {
 			# Generate Cob(DR) Interface Configuration Commands
 			$CMDSTR = "server_ifconfig $($OBJ.TargetDrDM) -create -Device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetDrIp) <MASK> <BROADCAST>" 		
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
@@ -196,7 +200,7 @@ PROCESS {
 	}
 	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetNfsServer -Unique
 	ForEach ($OBJ in $SUBSET) {
-		If ($($OBJ.TargetNfsServer) -ne $NULL -or $($OBJ.TargetNfsServer) -ne "N/A") {
+		If ($($OBJ.TargetNfsServer) -ne "" -or $($OBJ.TargetNfsServer) -notlike "N/A") {
 			# Generate Prod NFS LDAP Commands
 			$CMDSTR = "server_ldap $($OBJ.TargetDm) -add -basedn <BASE_DN> -servers <CSV_SERVER_LIST> -sslenabled n"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
@@ -210,7 +214,7 @@ PROCESS {
 	}
 	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetFilesystem -Unique
 	ForEach ($OBJ in $SUBSET) {
-		If ($($OBJ.TargetFilesystem) -ne $NULL -or $($OBJ.TargetFilesystem) -ne "N/A") {
+		If ($($OBJ.TargetFilesystem) -ne "" -or $($OBJ.TargetFilesystem) -notlike "N/A") {
 			$CMDSTR = "nas_fs -name $($OBJ.TargetFilesystem) -type $($OBJ.TargetSecurityStyle) -create size=$($OBJ.TargetCapacityGB)GB pool=$($OBJ.TargetStoragePool) -option slice=y"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
@@ -236,7 +240,7 @@ PROCESS {
 				CommandString = "$CMDSTR"
 			}
 			# Qtree commands
-			If ($($OBJ.TargetDm) -ne $NULL -or $($OBJ.TargetDm) -ne "N/A") {
+			If ($($OBJ.TargetDm) -ne "" -or $($OBJ.TargetDm) -notlike "N/A") {
 				$TGTDM = $($OBJ.TargetDm)
 				$DMNUM = $TGTDM.Substring(7)
 				$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
@@ -286,7 +290,7 @@ PROCESS {
 				CommandString = "$CMDSTR"
 			}
 		}
-		If ($($OBJ.TargetDrFilesystem) -ne $NULL -or $($OBJ.TargetDrFilesystem) -ne "N/A") {
+		If ($($OBJ.TargetDrFilesystem) -ne "" -or $($OBJ.TargetDrFilesystem) -notlike "N/A") {
 			$CMDSTR = "nas_replicate -create $($OBJ.TargetFilesystem)_REP -source -fs $($OBJ.TargetFilesystem) -destination -fs $($OBJ.TargetDrFilesystem) -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
