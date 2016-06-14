@@ -99,13 +99,17 @@ PROCESS {
 			$TGTLOC = $TGTSYS.Substring(0,3)
 			$TGTDRSYS = $($OBJ.TargetDrSystem)
 			$TGTDRLOC = $TGTDRSYS.Substring(0,3)
-			If ($($OBJ.TargetDm) -notlike "N/A" -or $($OBJ.TargetDm) -ne "") {
+			If ($($OBJ.TargetDm) -match "server_[0-9]$" ) {
 				$TGTDM = $($OBJ.TargetDm)
 				$TGTDMNUM = $TGTDM.Substring(7)
+			} Else {
+				$TGTDMNUM = "<TGT_DM_NUM>"
 			}
-			If ($($OBJ.TargetDrDm) -notlike "N/A" -or $($OBJ.TargetDrDm) -ne "") {
+			If ($($OBJ.TargetDrDm) -match "server_[0-9]$"{
 				$TGTDRDM = $($OBJ.TargetDrDm)
 				$TGTDRDMNUM = $TGTDRDM.Substring(7)
+			} Else {
+				$TGTDRDMNUM = "<TGT_DR_DM_NUM>"
 			}
 			# Create Replication Passphrase on Source System
 			$CMDSTR = "nas_cel -create $($OBJ.TargetSystem) -ip <REP_IP> -passphrase <REP_PASS>"
