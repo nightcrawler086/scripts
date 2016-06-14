@@ -95,8 +95,14 @@ PROCESS {
 		Where-Object {$_.TargetSystem -ne "N/A" -or $_.TargetSystem -ne "" -and $_.TargetDrSystem -ne "N/A" -or $_.TargetDrSystem -ne ""} | 
 			Sort-Object TargetSystem,TargetDm,TargetDrSystem,TargetDrDm -Unique
 	ForEach ($OBJ in $SUBSET) {
-			$TGTLOC = $($OBJ.TargetSystem)Substring(0,3)
-			$TGTDRLOC = $($OBJ.TargetDrSystem)Substring(0,3)
+			$TGTSYS = $($OBJ.TargetSystem)
+			$TGTLOC = $TGTSYS.Substring(0,3)
+			$TGTDRSYS = $($OBJ.TargetDrSystem)
+			$TGTDRLOC = $TGTDRSYS.Substring(0,3)
+			$TGTDM = $($OBJ.TargetDm)
+			$TGTDMNUM = $TGTDM.Substring(7)
+			$TGTDRDM = $($OBJ.TargetDrDm)
+			$TGTDRDMNUM = $TGTDRDM.Substring(7)
 			# Create Replication Passphrase on Source System
 			$CMDSTR = "nas_cel -create $($OBJ.TargetSystem) -ip <REP_IP> -passphrase <REP_PASS>"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
@@ -106,13 +112,31 @@ PROCESS {
 				CommandType = "prdRepPass";
 				CommandString = "$CMDSTR"
 			}
-			# Create Replication Passphrase on DestinationSystem
+			# Create Replication Passphrase on Destination System
 			$CMDSTR = "nas_cel -create $($OBJ.TargetDrSystem) -ip <REP_IP> -passphrase <REP_PASS>"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "drRepPass";
+				CommandString = "$CMDSTR"
+			}
+			# Create Replication Interconnect on Prod System
+			$CMDSTR = "nas_cel -interconnect -create $TGTLOC`_dm$TGTDMNUM`-$TGTDRLOC`_dm$TGTDRDMNUM -source_server $TGTDM -destination_system $TGTDRSYS -destination_server $TGTDRDM -source_interfaces ip=<REP_IP> -destination_interfaces ip=<REP_IP>"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdCreateInterconnect";
+				CommandString = "$CMDSTR"
+			}
+			# Create Replication Interconnect on Cob(DR) System
+			$CMDSTR = "nas_cel -interconnect -create $TGTDRLOC`_dm$TGTDRDMNUM`-$TGTLOC`_dm$TGTDMNUM -source_server $TGTDRDM -destination_system $TGTSYS -destination_server $TGTDM -source_interfaces ip=<REP_IP> -destination_interfaces ip=<REP_IP>"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "drCreateInterconnect";
 				CommandString = "$CMDSTR"
 			}
 		}
@@ -213,7 +237,8 @@ PROCESS {
 			}
 			# Qtree commands
 			If ($($OBJ.TargetDm) -ne $NULL -or $($OBJ.TargetDm) -ne "N/A") {
-				$DMNUM = $($OBJ.TargetDm).Substring(7)
+				$TGTDM = $($OBJ.TargetDm)
+				$DMNUM = $TGTDM.Substring(7)
 				$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
