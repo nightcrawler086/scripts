@@ -247,7 +247,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdVdmCreate";
-				CommandHeading = "`r`n ## VDM Creations Commands (PROD)`r`n";
+				CommandHeading = "`r`n## VDM Creations Commands (PROD)`r`n";
 				CommandString = $CMDSTR
 			}
 			# Generate Prod VDM Int Attach Commands
@@ -257,7 +257,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdVdmAttachInt";
-				CommandHeading = "`r`n ## VDM Attach Interface Commands (PROD)`r`n";
+				CommandHeading = "`r`n## VDM Attach Interface Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			} 
 		}
@@ -272,7 +272,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdVdmRep";
-				CommandHeading = "`r`n ## VDM Replication Commands (PROD)`r`n";
+				CommandHeading = "`r`n## VDM Replication Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Generate Cob(DR) VDM Int Attach Commands
@@ -282,7 +282,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "drVdmAttachInt";
-				CommandHeading = "`r`n ## VDM Attach Interface Commands (DR)`r`n";
+				CommandHeading = "`r`n## VDM Attach Interface Commands (DR)`r`n";
 				CommandString = "$CMDSTR"
 			}
 		}
@@ -313,7 +313,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdRepPass";
-				CommandHeading = "`r`n ## Create Replication Passphrase Commands (PROD)`r`n";
+				CommandHeading = "`r`n## Create Replication Passphrase Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Create Replication Passphrase on Destination System
@@ -323,7 +323,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "drRepPass";
-				CommandHeading = "`r`n ## Create Replication Passphrase Commands (DR)`r`n";
+				CommandHeading = "`r`n## Create Replication Passphrase Commands (DR)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Create Replication Interconnect on Prod System
@@ -333,7 +333,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdCreateInterconnect";
-				CommandHeading = "`r`n ## Create Replication Interconnect Commands (PROD)`r`n";
+				CommandHeading = "`r`n## Create Replication Interconnect Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Create Replication Interconnect on Cob(DR) System
@@ -343,43 +343,43 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "drCreateInterconnect";
-				CommandHeading = "`r`n ## Create Replication Interconnect Commands (DR)`r`n";
+				CommandHeading = "`r`n## Create Replication Interconnect Commands (DR)`r`n";
 				CommandString = "$CMDSTR"
 			}
 		}
+	$SUBSET = $ALLSYSTEMS | 
+		Where-Object {$_.TargetIp -match "([0-9]{1,3}\.){3}[0-9]{1,3}$"} | 
+			Sort-Object -Property TargetIp -Unique
+	ForEach ($OBJ in $SUBSET) {
+		# Generate Prod Interface Configuration Commands
+		$CMDSTR = "server_ifconfig $($OBJ.TargetDM) -create -Device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetIp) <MASK> <BROADCAST>" 		
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "prdIntCreate";
+			CommandHeading = "`r`n## Create Interface Commands (PROD)`r`n";
+			CommandString = "$CMDSTR"
+		}
+	}
+	$SUBSET = $ALLSYSTEMS | 
+		Where-Object {$_.TargetDrIp -match "([0-9]{1,3}\.){3}[0-9]{1,3}$"} | 
+			Sort-Object -Property TargetDrIp -Unique
+	ForEach ($OBJ in $SUBSET) {
+		# Generate Cob(DR) Interface Configuration Commands
+		$CMDSTR = "server_ifconfig $($OBJ.TargetDrDM) -create -Device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetDrIp) <MASK> <BROADCAST>" 		
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "drIntCreate";
+			CommandHeading = "`r`n## Create Interface Commands (DR)`r`n";
+			CommandString = "$CMDSTR"
+		}
+	}
 	# ***** Left off here *****
 	# Need to revise filtering in $SUBSET definition
 	# Should be $ALLSYSTEMS | Where <something> | sort -property <props> -Unique
-	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetIp -Unique
-	ForEach ($OBJ in $SUBSET) {
-		If ($($OBJ.TargetIp) -ne "" -or $($OBJ.TargetIp) -notlike "N/A") {
-			# Generate Prod Interface Configuration Commands
-			$CMDSTR = "server_ifconfig $($OBJ.TargetDM) -create -Device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetIp) <MASK> <BROADCAST>" 		
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "prdIntCreate";
-				CommandHeading = "`r`n ## Create Interface Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
-			}
-		}
-	}
-	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetDrIp -Unique
-	ForEach ($OBJ in $SUBSET) {
-		If ($($OBJ.TargetDrIp) -ne "" -or $($OBJ.TargetDrIp) -notlike "N/A") {
-			# Generate Cob(DR) Interface Configuration Commands
-			$CMDSTR = "server_ifconfig $($OBJ.TargetDrDM) -create -Device fsn0 -name <INT_NAME> -protocol IP $($OBJ.TargetDrIp) <MASK> <BROADCAST>" 		
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "drIntCreate";
-				CommandHeading = "`r`n ## Create Interface Commands (DR)`r`n";
-				CommandString = "$CMDSTR"
-			}
-		}
-	}
 	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetCifsServer -Unique
 	ForEach ($OBJ in $SUBSET) {
 		If ($($OBJ.TargetProtocol) -eq "CIFS" -or $($OBJ.TargetProtocol) -eq "BOTH") {
@@ -390,7 +390,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdCifsCreate";
-				CommandHeading = "`r`n ## Create CIFS Server Commands (PROD)`r`n";
+				CommandHeading = "`r`n## Create CIFS Server Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Generate Prod Join CIFS Server Commands 
@@ -400,7 +400,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdCifsJoin";
-				CommandHeading = "`r`n ## Join CIFS Server Commands (PROD)`r`n";
+				CommandHeading = "`r`n## Join CIFS Server Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 		}
@@ -415,7 +415,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdNfsLdap";
-				CommandHeading = "`r`n ## NFS LDAP Configuration Commands (PROD)`r`n";
+				CommandHeading = "`r`n## NFS LDAP Configuration Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 		}	
@@ -429,7 +429,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdFsCreate";
-				CommandHeading = "`r`n ## Filesystem Creation Commands (PROD)`r`n";
+				CommandHeading = "`r`n## Filesystem Creation Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Target Prod FS Dedupe Commands
@@ -439,7 +439,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdFsDedupe";
-				CommandHeading = "`r`n ## Filesystem Deduplication Commands (PROD)`r`n";
+				CommandHeading = "`r`n## Filesystem Deduplication Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Target Prod Checkpoint Commands
@@ -449,7 +449,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdFsCkpt";
-				CommandHeading = "`r`n ## Filesystem Checkpoint Commands (PROD)`r`n";
+				CommandHeading = "`r`n## Filesystem Checkpoint Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Qtree commands
@@ -463,7 +463,7 @@ PROCESS {
 					TargetDrSystem = $OBJ.TargetDrSystem;
 					CommandType = "prdFsQtree";
 					CommandString = "$CMDSTR"
-					CommandHeading = "`r`n ## Filesystem Qtree Commands (PROD)`r`n";
+					CommandHeading = "`r`n## Filesystem Qtree Commands (PROD)`r`n";
 				} 
 			} Else {
 				$CMDSTR = "mkdir /nasmcd/quota/slot_X/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
@@ -472,7 +472,7 @@ PROCESS {
 					TargetSystem = $OBJ.TargetSystem;
 					TargetDrSystem = $OBJ.TargetDrSystem;
 					CommandType = "prdFsQtree";
-					CommandHeading = "`r`n ## Filesystem Qtree Commands (PROD)`r`n";
+					CommandHeading = "`r`n## Filesystem Qtree Commands (PROD)`r`n";
 					CommandString = "$CMDSTR"
 				} 
 			}
@@ -483,7 +483,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdFsMnt";
-				CommandHeading = "`r`n ## Filesystem Mount Commands (PROD)`r`n";
+				CommandHeading = "`r`n## Filesystem Mount Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 		}
@@ -495,7 +495,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdCifsExport";
-				CommandHeading = "`r`n ## CIFS Export Commands (PROD)`r`n";
+				CommandHeading = "`r`n## CIFS Export Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 		}
@@ -506,7 +506,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdNfsExport";
-				CommandHeading = "`r`n ## NFS Export Commands (PROD)`r`n";
+				CommandHeading = "`r`n## NFS Export Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 		}
@@ -518,7 +518,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdFsRep";
-				CommandHeading = "`r`n ## Filesystem Replication Commands (PROD)`r`n";
+				CommandHeading = "`r`n## Filesystem Replication Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Cob (DR) FS Creation Commands
@@ -528,7 +528,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "drFsCreate";
-				CommandHeading = "`r`n ## Filesystem Creation Commands (DR)`r`n";
+				CommandHeading = "`r`n## Filesystem Creation Commands (DR)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Cob (DR) Mount Commands
@@ -538,7 +538,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "drFsMnt";
-				CommandHeading = "`r`n ## Filesystem Mount Commands (DR)`r`n";
+				CommandHeading = "`r`n## Filesystem Mount Commands (DR)`r`n";
 				CommandString = "$CMDSTR"
 			}
 			# Cob (DR) Checkpoint Commands
@@ -548,7 +548,7 @@ PROCESS {
 				TargetSystem = $OBJ.TargetSystem;
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "drFsCkpt";
-				CommandHeading = "`r`n ## Filesystem Checkpoint Commands (DR)`r`n";
+				CommandHeading = "`r`n## Filesystem Checkpoint Commands (DR)`r`n";
 				CommandString = "$CMDSTR"
 			}
 		}
@@ -560,22 +560,22 @@ END {
 	# Write to Text File
 	If ($OutFormat -eq "TXT") {
 		$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
-		$SYSTEMS = $OUTPUT | Select-Object -ExpandProperty SourceSystem -Unique
+		$SYSTEMS = $OUTPUT | Select-Object -Property SourceSystem -Unique
 		$CMDBLK = "``````"
 		ForEach ($OBJ in $SYSTEMS) {
 			If ($($OBJ.SourceSystem) -ne "") {
-				Write-Output "# Provisioning Script for $($OBJ.SourceSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
+				Write-Output "# Provisioning Script for $($OBJ.SourceSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
 			}
 		}
 		$CMDTYPES = $OUTPUT | Sort-Object -Property SourceSystem,CommandType -Unique
 		ForEach ($OBJ in $CMDTYPES) {
 			Write-Output "$($OBJ.CommandHeading)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-			Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
+			Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
 			$ALLCMDS = $OUTPUT | Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
 			ForEach ($CMD in $ALLCMDS) {
-				Write-Output $($CMD.CommandString) | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)-provisioning-script.txt"
+				Write-Output $($CMD.CommandString) | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)-provisioning-script.txt" -Append
 			}
-			Write-Output $CMDBLK | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
+			Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
 		} 
 	} Else {
 		$OUTPUT
