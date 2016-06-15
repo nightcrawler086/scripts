@@ -21,169 +21,170 @@ BEGIN {
 
 	function Text-Output {
 		$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
+		$OUTFILE = "${TIMESTAMP}_${$OBJ.SourceSystem}-provisioning-script.txt"
 		$SUBSET = $OUTPUT | Select-Object -ExpandProperty SourceSystem -Unique
 		ForEach ($OBJ in $SUBSET) {
-			WO "# Provisioning Script for $($OBJ.SourceSystem)`r`n" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "# Provisioning Script for $($OBJ.SourceSystem)`r`n" | Out-File $OUTFILE
 		}
 		WO "`r`n## Target Production VDM Creation Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdVdmCreate"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production Interface Creation Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdIntCreate"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production VDM Attach Interface Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdVdmAttachInt"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production VDM Replication Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdVdmRep"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production Interconnect Passphrase Creation Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdRepPass"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production Interconnect Creation Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdCreateInterconnect"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production CIFS Server Creation Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdCifsCreate"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production CIFS Server Join Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdCifsJoin"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production NFS LDAP Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdNfsLdap"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production Filesystem Create Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdFsCreate"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production Filesystem Qtree Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdFsQtree"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production Filesystem Mount Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdFsMount"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production CIFS Export Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdCifsExport"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production NFS Export Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdNfsExport"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production Filesystem Dedupe Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdFsDedupe"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Production Filesystem Checkpoint Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdFsCkpt"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Cob (DR) Interface Create Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drIntCreate"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Cob (DR) VDM Interface Attach Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drVdmAttachInt"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Cob (DR) Interconnect Passphrase Create Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drRepPass"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Cob (DR) Interconnect Create Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drCreateInterconnect"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Cob (DR) Filesystem Create Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drFsCreate"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Cob (DR) Filesystem Mount Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drFsMnt"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 		WO "`r`n## Target Cob (DR) Filesystem Checkpoint Commands`r`n"
 		WO "``````"
 		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drFsCkpt"}
 		ForEach ($OBJ in $SUBSET) {
-			WO "$($OBJ.CommandString)" | Out-File "$TIMESTAMP`_$($OBJ.SourceSystem)-provisioning-script.txt"
+			WO "$($OBJ.CommandString)" | Out-File $OUTFILE
 		}
 		WO "``````"
 	}
