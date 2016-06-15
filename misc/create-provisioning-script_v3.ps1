@@ -185,7 +185,7 @@ BEGIN {
 		}
 		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
 	}
-#>
+
 
 	function Text-Output2 {
 		$SYSTEMS = $OUTPUT | Select-Object -ExpandProperty SourceSystem -Unique
@@ -194,7 +194,7 @@ BEGIN {
 			Write-Output "# Provisioning Script for $($SYS.SourceSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($SYS.SourceSystem)-provisioning-script.txt" -Append
 			$CMDTYPES = $OUTPUT | Select-Object -Property SourceSystem,CommandType -Unique
 			ForEach ($OBJ in $CMDTYPES) {
-				Write-Output $OBJ.CommandHeading | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
+				Write-Output $($OBJ.CommandHeading) | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
 				Write-Output $CMDBLK | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
 				$ALLCMDS = $OUTPUT | Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
 				ForEach ($CMD in $ALLCMDS) {
@@ -204,6 +204,7 @@ BEGIN {
 			} 
 		}
 	}
+#>
 
 }
 
@@ -559,7 +560,21 @@ END {
 	# Write to Text File
 	If ($OutFormat -eq "TXT") {
 		$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
-		Text-Output2
+		$SYSTEMS = $OUTPUT | Select-Object -ExpandProperty SourceSystem -Unique
+		$CMDBLK = "``````"
+		ForEach ($SYS in $SYSTEM) {
+			Write-Output "# Provisioning Script for $($SYS.SourceSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($SYS.SourceSystem)-provisioning-script.txt" -Append
+			$CMDTYPES = $OUTPUT | Select-Object -Property SourceSystem,CommandType -Unique
+			ForEach ($OBJ in $CMDTYPES) {
+				Write-Output $($OBJ.CommandHeading) | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
+				Write-Output $CMDBLK | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
+				$ALLCMDS = $OUTPUT | Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
+				ForEach ($CMD in $ALLCMDS) {
+					Write-Output $($CMD.CommandString) | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)-provisioning-script.txt"
+				}
+				Write-Output $CMDBLK | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
+			} 
+		}
 	} Else {
 		$OUTPUT
 	}
