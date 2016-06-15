@@ -562,7 +562,7 @@ END {
 		$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
 		$SYSTEMS = $OUTPUT | Select-Object -ExpandProperty SourceSystem -Unique
 		$CMDBLK = "``````"
-		ForEach ($SYS in $SYSTEM) {
+		ForEach ($SYS in $SYSTEMS) {
 			Write-Output "# Provisioning Script for $($SYS.SourceSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($SYS.SourceSystem)-provisioning-script.txt" -Append
 			$CMDTYPES = $OUTPUT | Select-Object -Property SourceSystem,CommandType -Unique
 			ForEach ($OBJ in $CMDTYPES) {
