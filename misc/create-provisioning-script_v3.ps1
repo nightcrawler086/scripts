@@ -562,17 +562,20 @@ END {
 		$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
 		$SYSTEMS = $OUTPUT | Select-Object -ExpandProperty SourceSystem -Unique
 		$CMDBLK = "``````"
-		ForEach ($SYS in $SYSTEMS) {
-			Write-Output "# Provisioning Script for $($SYS.SourceSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($SYS.SourceSystem)-provisioning-script.txt" -Append
-			$CMDTYPES = $OUTPUT | Select-Object -Property SourceSystem,CommandType -Unique
-			ForEach ($OBJ in $CMDTYPES) {
-				Write-Output $($OBJ.CommandHeading) | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-				Write-Output $CMDBLK | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
-				$ALLCMDS = $OUTPUT | Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
-				ForEach ($CMD in $ALLCMDS) {
-					Write-Output $($CMD.CommandString) | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)-provisioning-script.txt"
-				}
-				Write-Output $CMDBLK | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
+		ForEach ($OBJ in $SYSTEMS) {
+			If ($($OBJ.SourceSystem) -ne "") {
+				Write-Output "# Provisioning Script for $($OBJ.SourceSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
+			}
+		}
+		$CMDTYPES = $OUTPUT | Sort-Object -Property SourceSystem,CommandType -Unique
+		ForEach ($OBJ in $CMDTYPES) {
+			Write-Output "$($OBJ.CommandHeading)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
+			Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
+			$ALLCMDS = $OUTPUT | Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
+			ForEach ($CMD in $ALLCMDS) {
+				Write-Output $($CMD.CommandString) | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)-provisioning-script.txt"
+			}
+			Write-Output $CMDBLK | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
 			} 
 		}
 	} Else {
