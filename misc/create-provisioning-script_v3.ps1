@@ -576,8 +576,7 @@ END {
 				Write-Output $($CMD.CommandString) | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)-provisioning-script.txt"
 			}
 			Write-Output $CMDBLK | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
-			} 
-		}
+		} 
 	} Else {
 		$OUTPUT
 	}
