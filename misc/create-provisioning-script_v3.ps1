@@ -452,7 +452,7 @@ PROCESS {
 				CommandString = "$CMDSTR"
 			}
 			# Qtree commands
-			If ($($OBJ.TargetDm) -ne "" -or $($OBJ.TargetDm) -notlike "N/A" -or $($OBJ.TargetDm) -match "server_[0-9]$") {
+			If ($($OBJ.TargetDm) -match "server_[0-9]$") {
 				$TGTDM = $($OBJ.TargetDm)
 				$DMNUM = $TGTDM.Substring(7)
 				$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
