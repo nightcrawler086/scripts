@@ -187,35 +187,37 @@ PROCESS {
 			CommandString = "$CMDSTR"
 		}
 	}
+	$SUBSET = $ALLSYSTEMS | 
+		Where-Object {$_.TargetCifsServer -ne "" -or $_.TargetCifsServer -notlike "N/A" -and $_.TargetProtocol -eq "CIFS" -or $_.TargetProtocol -eq "BOTH"} | 
+			Sort-Object -Property TargetCifsServer -Unique
+	ForEach ($OBJ in $SUBSET) {
+		# Generate Prod Create CIFS Server Commands
+		$CMDSTR = "server_cifs $($OBJ.TargetCifsServer) -add compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,interface=<INT_NAME>,local_users"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "prdCifsCreate";
+			CommandHeading = "`r`n## Create CIFS Server Commands (PROD)`r`n";
+			CommandString = "$CMDSTR"
+		}
+		# Generate Prod Join CIFS Server Commands 
+		$CMDSTR = "server_cifs $($OBJ.TargetCifsServer) -Join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=<ADMIN_USER>,`"ou=Servers:ou=NAS:ou=INFRA`""
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "prdCifsJoin";
+			CommandHeading = "`r`n## Join CIFS Server Commands (PROD)`r`n";
+			CommandString = "$CMDSTR"
+		}
+	}
 	# ***** Left off here *****
 	# Need to revise filtering in $SUBSET definition
 	# Should be $ALLSYSTEMS | Where <something> | sort -property <props> -Unique
-	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetCifsServer -Unique
-	ForEach ($OBJ in $SUBSET) {
-		If ($($OBJ.TargetProtocol) -eq "CIFS" -or $($OBJ.TargetProtocol) -eq "BOTH") {
-			# Generate Prod Create CIFS Server Commands
-			$CMDSTR = "server_cifs $($OBJ.TargetCifsServer) -add compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,interface=<INT_NAME>,local_users"
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "prdCifsCreate";
-				CommandHeading = "`r`n## Create CIFS Server Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
-			}
-			# Generate Prod Join CIFS Server Commands 
-			$CMDSTR = "server_cifs $($OBJ.TargetCifsServer) -Join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=<ADMIN_USER>,`"ou=Servers:ou=NAS:ou=INFRA`""
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "prdCifsJoin";
-				CommandHeading = "`r`n## Join CIFS Server Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
-			}
-		}
-	}
-	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetNfsServer -Unique
+	$SUBSET = $ALLSYSTEMS | 
+		Where-Object {$_.TargetNfsServer -ne "" -or $_.TargetNfsSever -notlike "N/A"} 
+			| Sort-Object -Property TargetNfsServer -Unique
 	ForEach ($OBJ in $SUBSET) {
 		If ($($OBJ.TargetNfsServer) -ne "" -or $($OBJ.TargetNfsServer) -notlike "N/A") {
 			# Generate Prod NFS LDAP Commands
@@ -228,7 +230,65 @@ PROCESS {
 				CommandHeading = "`r`n## NFS LDAP Configuration Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
-		}	
+			$CMDSTR = "nss_base_passwd <DISTINGUISHED_NAME>`r`nnss_base_group <DISTINGUISHED_NAME>`r`nnss_base_netgroup <DISTINGUISHED_NAME>"
+			If ($($OBJ.TargetDm) -match "server_[0-9]$") {
+				$TGTDM = $($OBJ.TargetDm)
+				$DMNUM = $TGTDM.Substring(7)
+				$OUTPUT += New-Object -TypeName PSObject -Property @{
+					SourceSystem = $OBJ.SourceSystem;
+					TargetSystem = $OBJ.TargetSystem;
+					TargetDrSystem = $OBJ.TargetDrSystem;
+					CommandType = "prdNfsLdapVdm";
+					CommandHeading = "`r`n## NFS LDAP Configuration (VDM Level) Commands (PROD)`r`n";
+					CommandString = "$CMDSTR"
+					Comments = "**Write the following to the file ``/nasmcd/quota/slot_$DMNUM/root_vdm_<VDM_NUM>/.etc/ldap.conf``**"
+				}
+			} Else {
+				$OUTPUT += New-Object -TypeName PSObject -Property @{
+					SourceSystem = $OBJ.SourceSystem;
+					TargetSystem = $OBJ.TargetSystem;
+					TargetDrSystem = $OBJ.TargetDrSystem;
+					CommandType = "prdNfsLdapVdm";
+					CommandHeading = "`r`n## NFS LDAP Configuration (VDM Level) Commands (PROD)`r`n";
+					CommandString = "$CMDSTR"
+					Comments = "**Write the following to the file ``/nasmcd/quota/slot_<DM_NUM>/root_vdm_<VDM_NUM>/.etc/ldap.conf``**"
+				}
+			}
+			$CMDSTR = "server_nsdomains $($OBJ.TargetVdm) -set -resolver LDAP=<LDAP_DN>`r`nserver_nsdomains $($OBJ.TargetVdm) -set -resolver DNS=<DOMAIN_NAME>`r`nserver_nsdomains $($OBJ.TargetVdm) -enable`r`nserver_nsdomains $($OBJ.TargetVdm)"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdNfsNsDomain";
+				CommandHeading = "`r`n## NFS NS Domain Configuration Commands (PROD)`r`n";
+				CommandString = "$CMDSTR"
+				Comments = ""
+			}
+			$CMDSTR = "passwd: files ldap`r`ngroup: files ldap`r`nhosts: files dns`r`nnetgroup: files ldap"
+			If ($($OBJ.TargetDm) -match "server_[0-9]$") {
+				$TGTDM = $($OBJ.TargetDm)
+				$DMNUM = $TGTDM.Substring(7)
+				$OUTPUT += New-Object -TypeName PSObject -Property @{
+					SourceSystem = $OBJ.SourceSystem;
+					TargetSystem = $OBJ.TargetSystem;
+					TargetDrSystem = $OBJ.TargetDrSystem;
+					CommandType = "prdNfsNsSwitch";
+					CommandHeading = "`r`n## NFS NS Switch Configuration (PROD)`r`n";
+					CommandString = "$CMDSTR"
+					Comments = "**Copy and paste this into the ``/nasmcd/quota/slot_$DMNUM/root_vdm_<VDM_NUM>/.etc/nsswitch.conf``**"
+				}
+			} Else {
+				$OUTPUT += New-Object -TypeName PSObject -Property @{
+					SourceSystem = $OBJ.SourceSystem;
+					TargetSystem = $OBJ.TargetSystem;
+					TargetDrSystem = $OBJ.TargetDrSystem;
+					CommandType = "prdNfsNsSwitch";
+					CommandHeading = "`r`n## NFS NS Switch Configuration (PROD)`r`n";
+					CommandString = "$CMDSTR"
+					Comments = "**Copy and paste this into the ``/nasmcd/quota/slot_<DMNUM>/root_vdm_<VDM_NUM>/.etc/nsswitch.conf``**"
+				}	
+			}
+		}
 	}
 	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetFilesystem -Unique
 	ForEach ($OBJ in $SUBSET) {
