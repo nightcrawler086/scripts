@@ -15,196 +15,6 @@ BEGIN {
 	
 	$OUTPUT = @()
 	
-	#function Write-Output($TXT) {
-	#	Invoke-Expression ("Write-Output " + $TXT)
-	#}
-
-<#
-	function Text-Output {
-		$SYSTEMS = $OUTPUT | Select-Object -ExpandProperty SourceSystem -Unique
-		ForEach ($SYSTEM in $SYSTEMS) {
-			Write-Output "# Provisioning Script for $($SYSTEM.SourceSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($SYSTEM.SourceSystem)-provisioning-script.txt" -Append
-		}
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdVdmCreate"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production Interface Creation Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdIntCreate"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production VDM Attach Interface Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdVdmAttachInt"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production VDM Replication Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdVdmRep"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production Interconnect Passphrase Creation Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdRepPass"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production Interconnect Creation Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdCreateInterconnect"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production CIFS Server Creation Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdCifsCreate"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production CIFS Server Join Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdCifsJoin"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production NFS LDAP Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdNfsLdap"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production Filesystem Create Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdFsCreate"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production Filesystem Qtree Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdFsQtree"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production Filesystem Mount Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdFsMount"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production CIFS Export Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdCifsExport"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production NFS Export Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdNfsExport"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production Filesystem Dedupe Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdFsDedupe"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Production Filesystem Checkpoint Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "prdFsCkpt"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Cob (DR) Interface Create Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drIntCreate"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Cob (DR) VDM Interface Attach Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drVdmAttachInt"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Cob (DR) Interconnect Passphrase Create Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drRepPass"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Cob (DR) Interconnect Create Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drCreateInterconnect"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Cob (DR) Filesystem Create Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drFsCreate"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Cob (DR) Filesystem Mount Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drFsMnt"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "`r`n## Target Cob (DR) Filesystem Checkpoint Commands`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		$SUBSET = $OUTPUT | Where-Object {$_.CommandType -eq "drFsCkpt"}
-		ForEach ($OBJ in $SUBSET) {
-			Write-Output "$($OBJ.CommandString)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-		}
-		Write-Output "``````" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-	}
-
-
-	function Text-Output2 {
-		$SYSTEMS = $OUTPUT | Select-Object -ExpandProperty SourceSystem -Unique
-		$CMDBLK = "``````"
-		ForEach ($SYS in $SYSTEM) {
-			Write-Output "# Provisioning Script for $($SYS.SourceSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($SYS.SourceSystem)-provisioning-script.txt" -Append
-			$CMDTYPES = $OUTPUT | Select-Object -Property SourceSystem,CommandType -Unique
-			ForEach ($OBJ in $CMDTYPES) {
-				Write-Output $($OBJ.CommandHeading) | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-				Write-Output $CMDBLK | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
-				$ALLCMDS = $OUTPUT | Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
-				ForEach ($CMD in $ALLCMDS) {
-					Write-Output $($CMD.CommandString) | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)-provisioning-script.txt"
-				}
-				Write-Output $CMDBLK | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
-			} 
-		}
-	}
-#>
 
 }
 
@@ -560,22 +370,22 @@ END {
 	# Write to Text File
 	If ($OutFormat -eq "TXT") {
 		$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
-		$SYSTEMS = $OUTPUT | Select-Object -Property SourceSystem -Unique
+		$SYSTEMS = $OUTPUT | Select-Object -Property SourceSystem,TargetSystem -Unique
 		$CMDBLK = "``````"
 		ForEach ($OBJ in $SYSTEMS) {
-			If ($($OBJ.SourceSystem) -ne "") {
-				Write-Output "# Provisioning Script for $($OBJ.SourceSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt"
+			If ($($OBJ.SourceSystem) -ne "" -and $($OBJ.TargetSystem) -ne "") {
+				Write-Output "# Provisioning Script for $($OBJ.TargetSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)2$($OBJ.TargetSystem)-script.txt"
 			}
 		}
 		$CMDTYPES = $OUTPUT | Sort-Object -Property SourceSystem,CommandType -Unique
 		ForEach ($OBJ in $CMDTYPES) {
-			Write-Output "$($OBJ.CommandHeading)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
-			Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
+			Write-Output "$($OBJ.CommandHeading)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)2$($OBJ.TargetSystem)-script.txt" -Append
+			Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)2$($OBJ.TargetSystem)-script.txt" -Append
 			$ALLCMDS = $OUTPUT | Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
 			ForEach ($CMD in $ALLCMDS) {
-				Write-Output $($CMD.CommandString) | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)-provisioning-script.txt" -Append
+				Write-Output $($CMD.CommandString) | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)2$($OBJ.TargetSystem)-script.txt" -Append
 			}
-			Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)-provisioning-script.txt" -Append
+			Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)2$($OBJ.TargetSystem)-script.txt" -Append
 		} 
 	} Else {
 		$OUTPUT
