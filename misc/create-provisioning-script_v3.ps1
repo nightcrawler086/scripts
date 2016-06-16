@@ -212,12 +212,9 @@ PROCESS {
 			CommandString = "$CMDSTR"
 		}
 	}
-	# ***** Left off here *****
-	# Need to revise filtering in $SUBSET definition
-	# Should be $ALLSYSTEMS | Where <something> | sort -property <props> -Unique
 	$SUBSET = $ALLSYSTEMS | 
-		Where-Object {$_.TargetNfsServer -ne "" -or $_.TargetNfsSever -notlike "N/A"} 
-			| Sort-Object -Property TargetNfsServer -Unique
+		Where-Object {$_.TargetNfsServer -ne "" -or $_.TargetNfsSever -notlike "N/A"} |
+			Sort-Object -Property TargetNfsServer -Unique
 	ForEach ($OBJ in $SUBSET) {
 		If ($($OBJ.TargetNfsServer) -ne "" -or $($OBJ.TargetNfsServer) -notlike "N/A") {
 			# Generate Prod NFS LDAP Commands
@@ -290,6 +287,9 @@ PROCESS {
 			}
 		}
 	}
+	# ***** Left off here *****
+	# Need to revise filtering in $SUBSET definition
+	# Should be $ALLSYSTEMS | Where <something> | sort -property <props> -Unique
 	$SUBSET = $ALLSYSTEMS | Sort-Object -Property TargetFilesystem -Unique
 	ForEach ($OBJ in $SUBSET) {
 		If ($($OBJ.TargetFilesystem) -ne "" -or $($OBJ.TargetFilesystem) -notlike "N/A") {
