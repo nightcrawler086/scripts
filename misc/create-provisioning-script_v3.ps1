@@ -258,7 +258,7 @@ PROCESS {
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdNfsNsDomain";
 				CommandHeading = "`r`n## NFS NS Domain Configuration Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
+				CommandString = "$CMDSTR";
 				Comments = ""
 			}
 			$CMDSTR = "passwd: files ldap`r`ngroup: files ldap`r`nhosts: files dns`r`nnetgroup: files ldap"
@@ -271,7 +271,7 @@ PROCESS {
 					TargetDrSystem = $OBJ.TargetDrSystem;
 					CommandType = "prdNfsNsSwitch";
 					CommandHeading = "`r`n## NFS NS Switch Configuration (PROD)`r`n";
-					CommandString = "$CMDSTR"
+					CommandString = "$CMDSTR";
 					Comments = "**Copy and paste this into the ``/nasmcd/quota/slot_$DMNUM/root_vdm_<VDM_NUM>/.etc/nsswitch.conf``**"
 				}
 			} Else {
@@ -281,7 +281,7 @@ PROCESS {
 					TargetDrSystem = $OBJ.TargetDrSystem;
 					CommandType = "prdNfsNsSwitch";
 					CommandHeading = "`r`n## NFS NS Switch Configuration (PROD)`r`n";
-					CommandString = "$CMDSTR"
+					CommandString = "$CMDSTR";
 					Comments = "**Copy and paste this into the ``/nasmcd/quota/slot_<DMNUM>/root_vdm_<VDM_NUM>/.etc/nsswitch.conf``**"
 				}	
 			}
@@ -310,7 +310,9 @@ PROCESS {
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdFsDedupe";
 				CommandHeading = "`r`n## Filesystem Deduplication Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
+				CommandString = "$CMDSTR";
+				Comments = "`r`n**Only run dedupe commands if dedupe is enabled on the source volume**`r`n"
+
 			}
 			# Target Prod Checkpoint Commands
 			$CMDSTR = "nas_ckpt_schedule -create $($OBJ.TargetFilesystem)_DAILY_SCHED -filesystem $($OBJ.TargetFilesystem) -description ""1730hrs daily checkpoint schedule for $($OBJ.TargetFilesystem)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:30 -keep 7"
@@ -326,7 +328,7 @@ PROCESS {
 			If ($($OBJ.TargetDm) -match "server_[0-9]$") {
 				$TGTDM = $($OBJ.TargetDm)
 				$DMNUM = $TGTDM.Substring(7)
-				$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
+				$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_<VDM_NUM>/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
@@ -336,7 +338,7 @@ PROCESS {
 					CommandHeading = "`r`n## Filesystem Qtree Commands (PROD)`r`n";
 				} 
 			} Else {
-				$CMDSTR = "mkdir /nasmcd/quota/slot_X/root_vdm_X/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
+				$CMDSTR = "mkdir /nasmcd/quota/slot_<DM_NUM>/root_vdm_<VDM_NUM>/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
 				$OUTPUT += New-Object -TypeName PSObject -Property @{
 					SourceSystem = $OBJ.SourceSystem;
 					TargetSystem = $OBJ.TargetSystem;
