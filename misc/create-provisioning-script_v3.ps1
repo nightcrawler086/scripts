@@ -33,11 +33,10 @@ PROCESS {
 		$RESPONSE = Read-Host '(Y/y/N/n)?'
 		If ($RESPONSE -eq "Y") {
 			$ALLSYSTEMS = Import-Csv -Path $CsvFile
-		} 
-		Else {
+		}
+	} Else {
 			Write-Host "Nothing to do."
 			Exit 1
-		}
 	}
 	# If source system specified, define our working set
 	If ($SourceSystem -ne $NULL) {
@@ -100,63 +99,63 @@ PROCESS {
 		Where-Object {$_.TargetSystem -notlike "N/A" -or $_.TargetSystem -ne "" -and $_.TargetDrSystem -notlike "N/A" -or $_.TargetDrSystem -ne ""} | 
 			Sort-Object TargetSystem,TargetDm,TargetDrSystem,TargetDrDm -Unique
 	ForEach ($OBJ in $SUBSET) {
-			$TGTSYS = $($OBJ.TargetSystem)
-			$TGTLOC = $TGTSYS.Substring(0,3)
-			$TGTDRSYS = $($OBJ.TargetDrSystem)
-			$TGTDRLOC = $TGTDRSYS.Substring(0,3)
-			If ($($OBJ.TargetDm) -match "server_[0-9]$") {
-				$TGTDM = $($OBJ.TargetDm)
-				$TGTDMNUM = $TGTDM.Substring(7)
-			} Else {
-				$TGTDMNUM = "<TGT_DM_NUM>"
-			}
-			If ($($OBJ.TargetDrDm) -match "server_[0-9]$") {
-				$TGTDRDM = $($OBJ.TargetDrDm)
-				$TGTDRDMNUM = $TGTDRDM.Substring(7)
-			} Else {
-				$TGTDRDMNUM = "<TGT_DR_DM_NUM>"
-			}
-			# Create Replication Passphrase on Source System
-			$CMDSTR = "nas_cel -create $($OBJ.TargetSystem) -ip <REP_IP> -passphrase <REP_PASS>"
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "prdRepPass";
-				CommandHeading = "`r`n## Create Replication Passphrase Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
-			}
-			# Create Replication Passphrase on Destination System
-			$CMDSTR = "nas_cel -create $($OBJ.TargetDrSystem) -ip <REP_IP> -passphrase <REP_PASS>"
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "drRepPass";
-				CommandHeading = "`r`n## Create Replication Passphrase Commands (DR)`r`n";
-				CommandString = "$CMDSTR"
-			}
-			# Create Replication Interconnect on Prod System
-			$CMDSTR = "nas_cel -interconnect -create $TGTLOC`_dm$TGTDMNUM`-$TGTDRLOC`_dm$TGTDRDMNUM -source_server $TGTDM -destination_system $TGTDRSYS -destination_server $TGTDRDM -source_interfaces ip=<REP_IP> -destination_interfaces ip=<REP_IP>"
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "prdCreateInterconnect";
-				CommandHeading = "`r`n## Create Replication Interconnect Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
-			}
-			# Create Replication Interconnect on Cob(DR) System
-			$CMDSTR = "nas_cel -interconnect -create $TGTDRLOC`_dm$TGTDRDMNUM`-$TGTLOC`_dm$TGTDMNUM -source_server $TGTDRDM -destination_system $TGTSYS -destination_server $TGTDM -source_interfaces ip=<REP_IP> -destination_interfaces ip=<REP_IP>"
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "drCreateInterconnect";
-				CommandHeading = "`r`n## Create Replication Interconnect Commands (DR)`r`n";
-				CommandString = "$CMDSTR"
-			}
+		$TGTSYS = $($OBJ.TargetSystem)
+		$TGTLOC = $TGTSYS.Substring(0,3)
+		$TGTDRSYS = $($OBJ.TargetDrSystem)
+		$TGTDRLOC = $TGTDRSYS.Substring(0,3)
+		If ($($OBJ.TargetDm) -match "server_[0-9]$") {
+			$TGTDM = $($OBJ.TargetDm)
+			$TGTDMNUM = $TGTDM.Substring(7)
+		} Else {
+			$TGTDMNUM = "<TGT_DM_NUM>"
 		}
+		If ($($OBJ.TargetDrDm) -match "server_[0-9]$") {
+			$TGTDRDM = $($OBJ.TargetDrDm)
+			$TGTDRDMNUM = $TGTDRDM.Substring(7)
+		} Else {
+			$TGTDRDMNUM = "<TGT_DR_DM_NUM>"
+		}
+		# Create Replication Passphrase on Source System
+		$CMDSTR = "nas_cel -create $($OBJ.TargetSystem) -ip <REP_IP> -passphrase <REP_PASS>"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "prdRepPass";
+			CommandHeading = "`r`n## Create Replication Passphrase Commands (PROD)`r`n";
+			CommandString = "$CMDSTR"
+		}
+		# Create Replication Passphrase on Destination System
+		$CMDSTR = "nas_cel -create $($OBJ.TargetDrSystem) -ip <REP_IP> -passphrase <REP_PASS>"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "drRepPass";
+			CommandHeading = "`r`n## Create Replication Passphrase Commands (DR)`r`n";
+			CommandString = "$CMDSTR"
+		}
+		# Create Replication Interconnect on Prod System
+		$CMDSTR = "nas_cel -interconnect -create $TGTLOC`_dm$TGTDMNUM`-$TGTDRLOC`_dm$TGTDRDMNUM -source_server $TGTDM -destination_system $TGTDRSYS -destination_server $TGTDRDM -source_interfaces ip=<REP_IP> -destination_interfaces ip=<REP_IP>"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "prdCreateInterconnect";
+			CommandHeading = "`r`n## Create Replication Interconnect Commands (PROD)`r`n";
+			CommandString = "$CMDSTR"
+		}
+		# Create Replication Interconnect on Cob(DR) System
+		$CMDSTR = "nas_cel -interconnect -create $TGTDRLOC`_dm$TGTDRDMNUM`-$TGTLOC`_dm$TGTDMNUM -source_server $TGTDRDM -destination_system $TGTSYS -destination_server $TGTDM -source_interfaces ip=<REP_IP> -destination_interfaces ip=<REP_IP>"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "drCreateInterconnect";
+			CommandHeading = "`r`n## Create Replication Interconnect Commands (DR)`r`n";
+			CommandString = "$CMDSTR"
+		}
+	}
 	$SUBSET = $ALLSYSTEMS | 
 		Where-Object {$_.TargetIp -match "([0-9]{1,3}\.){3}[0-9]{1,3}$"} | 
 			Sort-Object -Property TargetIp -Unique
@@ -291,9 +290,7 @@ PROCESS {
 		Where-Object {$_.TargetFilesystem -ne "" -or $_.TargetFilesystem -notlike "N/A" -and $_.TargetVdm -ne "" -or $_.TargetVdm -notlike "N/A"} | 
 			Sort-Object -Property TargetFilesystem,TargetVdm -Unique
 	ForEach ($OBJ in $SUBSET) {
-		If ($($OBJ.TargetSecurityStyle) -ne "" -or $($OBJ.TargetSecurityStyle) -notlike "N/A" -and `
-			$_.TargetCapacityGB -ne "" -or $_.TargetCapacityGB -notlike "N/A" -and `
-				$_.TargetStroagePool -ne "" -or $_.TargetStoragePool -notlike "N/A") {
+		If ($($OBJ.TargetSecurityStyle) -ne "" -or $($OBJ.TargetSecurityStyle) -notlike "N/A" -and $($OBJ.TargetCapacityGB) -ne "" -or $($OBJ.TargetCapacityGB) -notlike "N/A" -and $($OBJ.TargetStroagePool) -ne "" -or $($OBJ.TargetStoragePool) -notlike "N/A") {
 			$CMDSTR = "nas_fs -name $($OBJ.TargetFilesystem) -type $($OBJ.TargetSecurityStyle) -create size=$($OBJ.TargetCapacityGB)GB pool=$($OBJ.TargetStoragePool) -option slice=y"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
@@ -324,7 +321,6 @@ PROCESS {
 			CommandHeading = "`r`n## Filesystem Deduplication Commands (PROD)`r`n";
 			CommandString = "$CMDSTR";
 			Comments = "`r`n**Only run dedupe commands if dedupe is enabled on the source volume**`r`n"
-
 		}
 		# Target Prod Checkpoint Commands
 		$CMDSTR = "nas_ckpt_schedule -create $($OBJ.TargetFilesystem)_DAILY_SCHED -filesystem $($OBJ.TargetFilesystem) -description ""1730hrs daily checkpoint schedule for $($OBJ.TargetFilesystem)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:30 -keep 7"
@@ -340,7 +336,7 @@ PROCESS {
 		# Need to revise filtering in $SUBSET definition
 		# Should be $ALLSYSTEMS | Where <something> | sort -property <props> -Unique
 		# Qtree commands
-		If ($($OBJ.TargetDm) -match "server_[0-9]$" -and $($OBJ.TargetQtree) -ne "" -or $($OBJ.TargetQtree) -notlike "N/A")) {
+		If ($($OBJ.TargetDm) -match "server_[0-9]$" -and $($OBJ.TargetQtree) -ne "" -or $($OBJ.TargetQtree) -notlike "N/A") {
 			$TGTDM = $($OBJ.TargetDm)
 			$DMNUM = $TGTDM.Substring(7)
 			$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_<VDM_NUM>/$($OBJ.TargetFilesystem)/$($OBJ.TargetQtree)"
@@ -438,10 +434,10 @@ PROCESS {
 			CommandType = "drFsCkpt";
 			CommandHeading = "`r`n## Filesystem Checkpoint Commands (DR)`r`n";
 			CommandString = "$CMDSTR"
-			}
 		}
 	}
 }
+
 
 END {
 
