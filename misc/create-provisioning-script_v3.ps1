@@ -44,7 +44,7 @@ PROCESS {
 			Exit 1
 	}
 
-	If ($OutFormat -eq $NULL) {
+	If ($OutFormat -eq "") {
 		Write-Host "No output format specified..."
 		Write-Host "All output will be written to the console unless"
 		Write-Host "you specify and format (txt/csv/json)"
@@ -501,7 +501,7 @@ END {
 			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
 			$ALLTGTSYS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
 			ForEach ($TGTSYS in $ALLTGTSYS) {
-				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$(TGTSYS.TargetSystem)"} 
+				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$($TGTSYS.TargetSystem)"} 
 				$ALLCMDS | ConvertTo-Json | Out-File -FilePath ".\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).json"
 			}
 		}
