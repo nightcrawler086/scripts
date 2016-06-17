@@ -14,17 +14,22 @@ Param (
 BEGIN {
 	
 	$OUTPUT = @()
-	
 
 }
 
 PROCESS {
 	# To do:
 	#
-	# Create Different output formats (CSV, TXT (makrdown-style), and HTML)
-	# Add Replication configuration commands
-	# Re-check NFS commands (LDAP, Export creation)
-	# For some reason the "N/A" section of the If statements don't work...fix that
+	# Interconnect commands not filtering out "N/A" systems
+	# 	Neither is the Replication Passphrase
+	# 	Or Prod Checkpoint commands?
+	# 	Neither is PROD FS Creation
+	# 	Prod Dedupe
+	# 	Mount Commands
+	# 	Qtree Commands
+	# 	Interface attach
+	# 	VDM Creation
+	# 	Heading 
 	#
 	# If no SourceSystem specified, ask to perform for all systems
 	If ($SourceSystem -eq $NULL) {
@@ -35,9 +40,23 @@ PROCESS {
 			$ALLSYSTEMS = Import-Csv -Path $CsvFile
 		}
 	} Else {
-			Write-Host "Nothing to do."
+			Write-Host "Nothing to do...later"
 			Exit 1
 	}
+
+	If ($OutFormat -eq $NULL) {
+		Write-Host "No output format specified..."
+		Write-Host "All output will be written to the console unless"
+		Write-Host "you specify and format (txt/csv/json)"
+		Write-Host "Enter a format, or none to send all output to the console"
+		$RESPONSE = Read-Host '(txt/csv/json/none)'
+		If ($RESPONSE -eq $NULL -or $RESPONSE -eq "none") {
+			$OutFormat = ""
+		} Else {
+			$OutFormat = $RESPONSE
+		}
+	}
+
 	# If source system specified, define our working set
 	If ($SourceSystem -ne $NULL) {
 		$ALLSYSTEMS = Import-Csv -Path $CsvFile | Where-Object {$_.SourceSystem -eq "$SourceSystem"}
@@ -451,7 +470,9 @@ END {
 					Write-Output "# Provisioning Script for $($OBJ.TargetSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt"
 				}
 			}
-			$CMDTYPES = $OUTPUT | Sort-Object -Property SourceSystem,TargetSystem,CommandType -Unique | Sort-Object -Property CommandType -Descending
+			$CMDTYPES = $OUTPUT | 
+				Sort-Object -Property SourceSystem,TargetSystem,CommandType -Unique | 
+					Sort-Object -Property CommandType -Descending
 			ForEach ($OBJ in $CMDTYPES) {
 				Write-Output "$($OBJ.CommandHeading)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 				#Write-Output "$($OBJ.Comments)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
@@ -459,31 +480,33 @@ END {
 				$ALLCMDS = $OUTPUT | 
 					Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.TargetSystem -eq "$($OBJ.TargetSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
 				ForEach ($CMD in $ALLCMDS) {
-					If ($($CMD.Comments) -ne "") {
-						Write-Output "$($CMD.CommandString) # $($CMD.Comments)" | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-					} Else {
+					#If ($($CMD.Comments) -ne "") {
+					#	Write-Output "$($CMD.CommandString) # $($CMD.Comments)" | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					#} Else {
 						Write-Output "$($CMD.CommandString)" | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-					}
+					#}
 					Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 				} 
 			}
 		}
 		CSV {
+			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
 			$ALLTGTSYS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
 			ForEach ($TGTSYS in $ALLTGTSYS) {
-				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$TGTSYS"} 
+				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$($TGTSYS.TargetSystem)"} 
 				$ALLCMDS | Export-Csv -NoTypeInformation -Path ".\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).csv"
 			}
 		} 
 		JSON {
+			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
 			$ALLTGTSYS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
 			ForEach ($TGTSYS in $ALLTGTSYS) {
-				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$TGTSYS"} 
+				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$(TGTSYS.TargetSystem)"} 
 				$ALLCMDS | ConvertTo-Json | Out-File -FilePath ".\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).json"
 			}
 		}
 		default {
-				$OUTPUT
+			$OUTPUT
 		}
 	}
 }
