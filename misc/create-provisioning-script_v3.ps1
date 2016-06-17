@@ -445,39 +445,50 @@ PROCESS {
 
 END {
 
-	# Write to Text File
-	If ($OutFormat -eq "TXT") {
-		$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
-		$SYSTEMS = $OUTPUT | Select-Object -Property SourceSystem,TargetSystem -Unique
-		$CMDBLK = "``````"
-		ForEach ($OBJ in $SYSTEMS) {
-			If ($($OBJ.SourceSystem) -ne "" -and $($OBJ.TargetSystem) -ne "") {
-				Write-Output "# Provisioning Script for $($OBJ.TargetSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt"
+	switch ($OutFormat) {
+		TXT {	
+			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
+			$SYSTEMS = $OUTPUT | Select-Object -Property SourceSystem,TargetSystem -Unique
+			$CMDBLK = "``````"
+			ForEach ($OBJ in $SYSTEMS) {
+				If ($($OBJ.SourceSystem) -ne "" -and $($OBJ.TargetSystem) -ne "") {
+					Write-Output "# Provisioning Script for $($OBJ.TargetSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt"
+				}
+			}
+			$CMDTYPES = $OUTPUT | Sort-Object -Property SourceSystem,TargetSystem,CommandType -Unique | Sort-Object -Property CommandType -Descending
+			ForEach ($OBJ in $CMDTYPES) {
+				Write-Output "$($OBJ.CommandHeading)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+				#Write-Output "$($OBJ.Comments)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+				Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+				$ALLCMDS = $OUTPUT | 
+					Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.TargetSystem -eq "$($OBJ.TargetSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
+				ForEach ($CMD in $ALLCMDS) {
+					If ($($CMD.Comments) -ne "") {
+						Write-Output "$($CMD.CommandString) # $($CMD.Comments)" | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					} Else {
+						Write-Output "$($CMD.CommandString)" | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					}
+					Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+				} 
 			}
 		}
-		$CMDTYPES = $OUTPUT | Sort-Object -Property SourceSystem,TargetSystem,CommandType -Unique | Sort-Object -Property CommandType -Descending
-		ForEach ($OBJ in $CMDTYPES) {
-			Write-Output "$($OBJ.CommandHeading)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-			#Write-Output "$($OBJ.Comments)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-			Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-			$ALLCMDS = $OUTPUT | 
-				Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.TargetSystem -eq "$($OBJ.TargetSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
-			ForEach ($CMD in $ALLCMDS) {
-				If ($($CMD.Comments) -ne "") {
-					Write-Output "$($CMD.CommandString) # $($CMD.Comments)" | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-				} Else {
-					Write-Output "$($CMD.CommandString)" | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-				}
-				Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-			} 
-		} ElseIf ($OutFormat -eq "CSV"){
+		CSV {
 			$ALLTGTSYS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
 			ForEach ($TGTSYS in $ALLTGTSYS) {
 				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$TGTSYS"} 
 				$ALLCMDS | Export-Csv -NoTypeInformation -Path ".\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).csv"
-			} Else {
-				$OUTPUT
 			}
+		} 
+		JSON {
+			$ALLTGTSYS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
+			ForEach ($TGTSYS in $ALLTGTSYS) {
+				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$TGTSYS"} 
+				$ALLCMDS | ConvertTo-Json | Out-File -FilePath ".\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).json"
+			}
+		}
+		default {
+				$OUTPUT
 		}
 	}
 }
+
