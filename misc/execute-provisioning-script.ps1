@@ -80,8 +80,9 @@ PROCESS {
 	}
 	# Begin Validation Phase 1	
 	Write-Output "$(Get-Date -Format 'yyy.MM.dd-HH:mm:ss') - Starting Validation Phase" | Tee-Object $LOGFILE
+	$i = 0
 	ForEach ($OBJ in $COMMANDS) {
-		If (Get-Member -InputObject $OBJ -Name TargetSystem,CommandType,CommandString -MemberType NoteProperty) {
+		If (Get-Member -InputObject $OBJ -Name TargetSystem,CommandType,CommandString -MemberType Properties) {
 			$i = $i + 1
 		} 
 	}
