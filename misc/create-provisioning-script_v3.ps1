@@ -65,7 +65,7 @@ PROCESS {
 	# Create commands and append them to the $OUTPUT array
 	# This SUBSET is sufficiently filtered for VDM Creation commands on the target production side
 	$SUBSET = $ALLSYSTEMS | 
-		Where-Object {$_.TargetSystem -notlike "N/A" -or $_.TargetSystem -ne "" -and $_.TargetVdm -notlike "N/A" -or $_.TargetVdm -ne ""} | 
+		Where-Object {$_.TargetSystem -notlike "N/A" -or $_.TargetSystem -ne "" -and $_.TargetVdm -notlike "N/A" -or $_.TargetVdm -ne "" -and $_.TargetStoragePool -ne "" -or $_.TargetStoragePool -notlike "N/A"} | 
 			Sort-Object -Property TargetVdm -Unique
 	ForEach ($OBJ in $SUBSET) {
 			# Generate Prod VDM Creation Commands
@@ -355,6 +355,9 @@ PROCESS {
 		# Need to revise filtering in $SUBSET definition
 		# Should be $ALLSYSTEMS | Where <something> | sort -property <props> -Unique
 		# Qtree commands
+        $SUBSET = $ALLSYSTEMS | 
+		Where-Object {$_.TargetFilesystem -ne "" -or $_.TargetFilesystem -notlike "N/A" -and $_.TargetVdm -ne "" -or $_.TargetVdm -notlike "N/A"} | 
+			Sort-Object -Property TargetFilesystem,TargetVdm -Unique
 		If ($($OBJ.TargetDm) -match "server_[0-9]$" -and $($OBJ.TargetQtree) -ne "" -or $($OBJ.TargetQtree) -notlike "N/A") {
 			$TGTDM = $($OBJ.TargetDm)
 			$DMNUM = $TGTDM.Substring(7)
@@ -377,19 +380,30 @@ PROCESS {
 				CommandHeading = "`r`n## Filesystem Qtree Commands (PROD)`r`n";
 				CommandString = "$CMDSTR";
 				Comments = "Could not find valid Qtree name...using TargetFilesystem as Qtree name"
-			} 
-		}
+			}
+		} Else {
+            $CMDSTR = "mkdir /nasmcd/quota/slot_<DM_NUM>/root_vdm_<VDM_NUM>/$($OBJ.SourceFilesystem)/$($OBJ.SourceFilesystem)"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdFsQtree";
+				CommandHeading = "`r`n## Filesystem Qtree Commands (PROD)`r`n";
+				CommandString = "$CMDSTR";
+				Comments = "Could not find valid Qtree name...using SourceFilesystem as Qtree name"
+            }
+        }
 		# FS Mount Commands
 		$CMDSTR = "server_mount $($OBJ.TargetVDM) $($OBJ.TargetFilesystem) /$($OBJ.TargetFilesystem)"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "prdFsMnt";
-			CommandHeading = "`r`n## Filesystem Mount Commands (PROD)`r`n";
-			CommandString = "$CMDSTR"
-		}
-	}
+        $OUTPUT += New-Object -TypeName PSObject -Property @{
+	        SourceSystem = $OBJ.SourceSystem;
+		    TargetSystem = $OBJ.TargetSystem;
+		    TargetDrSystem = $OBJ.TargetDrSystem;
+		    CommandType = "prdFsMnt";
+		    CommandHeading = "`r`n## Filesystem Mount Commands (PROD)`r`n";
+		    CommandString = "$CMDSTR"
+        }
+        
 	# FS Export Commands
 	If ($($OBJ.TargetProtocol) -eq "CIFS" -or $($OBJ.TargetProtocol) -eq "BOTH") {
 		$CMDSTR = "server_export $($OBJ.TargetVDM) -Protocol cifs -name $($OBJ.TargetFilesystem) -o netbios=$($OBJ.TargetVDM) /$($OBJ.TargetFilesystem)/$($OBJ.TargetFilesystem)"
