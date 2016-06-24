@@ -12,43 +12,22 @@ Param (
 )
 
 BEGIN {
-		
-	switch -regex $InputFile {
-		'*.xlsx' {
-			Write-Host "detected excel input file..."
-			Write-Host "going to try to import the necessary modules..."
-			If ((Get-Module -Name ImportExcel)) {
-				Write-Host "ImportExcel module installed"
-			} ElseIf ((Get-Module -ListAvailable -Name ImportExcel)) {
-				Import-Module -Name ImportExcel
-			} Else {
-				Write-Host "Did not find the ImportExcel module...trying to install it..."
-				If (($PSVersionTable.PSVersion.Major) -ge 5) {
-					Find-Module -Name ImportExcel | Install-Module
-				} Else {
-					iex (new-object System.Net.WebClient).DownloadString('https://raw.github.com/dfinke/ImportExcel/master/Install.ps1')
-				}
-			}
-		}
-		'*.csv' {}
-	}
-	
-	
-	
-	
+# Don't think I'll need this anymore...
+<#		
 	If ($SourceSystem -ne $NULL) {
-		$ALLSYSTEMS = Import-Csv -Path $InputFile | Where-Object {$_.SourceSystem -eq "$SourceSystem"}
+		$OBJARRAY = Import-Csv -Path $InputFile | Where-Object {$_.SourceSystem -eq "$SourceSystem"}
 	} ElseIf ($SourceSystem -eq $NULL) {
 		Write-Host "No source system specified..."
 		Write-Host "Do you want to get all commands for all systems?"
 		$RESPONSE = Read-Host '(Y/y/N/n)?'
 		If ($RESPONSE -eq "Y") {
-			$ALLSYSTEMS = Import-Csv -Path $InputFile
+			$OBJARRAY = Import-Csv -Path $InputFile
 		}
 	} Else {
-			Write-Host "Nothing to do...later"
+			Write-Host "Nothing to do..."
 			Exit 1
 	}
+#>
 
 	If ($OutFormat -eq "") {
 		Write-Host "No output format specified..."
@@ -63,75 +42,158 @@ BEGIN {
 		}
 	}
 
+	$InputFileExt = [System.IO.Path]::GetExtension("$InputFile")
+	switch ($InputFileExt) {
+		".xlsx" {
+			Write-Host "detected excel input file..."
+			Write-Host "going to try to import the necessary modules..."
+			If ((Get-Module -Name ImportExcel)) {
+				Write-Host "ImportExcel module installed and imported"
+				$SHEETS = Get-ExcelSheetInfo $InputFile | Measure-Object | Select-Object -ExpandProperty Count
+				If ($SHEETS -gt 1) {
+					Write-Host "There are multiple sheets in this file..."
+					Write-Host "Select the index of the sheet you wish to process:"
+					$SHEETINFO = Get-ExcelSheetInfo $InputFile | Select-Object Index,Name
+					$SHEETINFO | Format-Table -Autosize
+					$SHEETIDX = Read-Host 'Index #'
+					$IMPORT = Import-Excel $InputFile -WorksheetName $($SHEETINFO | Where {$_.Index -eq "$SHEETIDX"} | Select-Object -ExpandProperty Name)
+				} Else {
+					$IMPORT = Import-Excel $InputFile 
+				}
+			} ElseIf ((Get-Module -ListAvailable -Name ImportExcel)) {
+				Write-Host "ImportExcel module installed.  Importing..."
+				Import-Module -Name ImportExcel
+				$SHEETS = Get-ExcelSheetInfo $InputFile | Measure-Object | Select-Object -ExpandProperty Count
+				If ($SHEETS -gt 1) {
+					Write-Host "There are multiple sheets in this file..."
+					Write-Host "Select the index of the sheet you wish to process:"
+					$SHEETINFO = Get-ExcelSheetInfo $InputFile | Select-Object Index,Name
+					$SHEETINFO
+					$SHEETIDX = Read-Host 'Index #'
+					$IMPORT = Import-Excel $InputFile -WorksheetName $($SHEETINFO | Where {$_.Index -eq "$SHEETIDX"} | Select-Object -ExpandProperty Name)
+				} Else {
+					$IMPORT = Import-Excel $InputFile
+				}
+			} Else {
+				Write-Host "Did not find the ImportExcel module...trying to install it..."
+				If (($PSVersionTable.PSVersion.Major) -ge 5) {
+					Find-Module -Name ImportExcel | Install-Module
+					If ($LastExitCode -eq 0) {
+						$SHEETS = Get-ExcelSheetInfo $InputFile | Measure-Object | Select-Object -ExpandProperty Count
+						If ($SHEETS -gt 1) {
+							Write-Host "There are multiple sheets in this file..."
+							Write-Host "Select the index of the sheet you wish to process:"
+							$SHEETINFO = Get-ExcelSheetInfo $InputFile | Select-Object Index,Name
+							$SHEETINFO
+							$SHEETIDX = Read-Host 'Index #'
+							$IMPORT = Import-Excel $InputFile -WorksheetName $($SHEETINFO | Where {$_.Index -eq "$SHEETIDX"} | Select-Object -ExpandProperty Name)
+						} Else {
+							$IMPORT = Import-Excel $InputFile
+						}
+					}
+				} ElseIf (($PSVersionTable.PSVersion.Major) -le 4){
+					iex (new-object System.Net.WebClient).DownloadString('https://raw.github.com/dfinke/ImportExcel/master/Install.ps1')
+					If ($LastExitCode -eq 0) {
+						$SHEETS = Get-ExcelSheetInfo $InputFile | Measure-Object | Select-Object -ExpandProperty Count
+						If ($SHEETS -gt 1) {
+							Write-Host "There are multiple sheets in this file..."
+							Write-Host "Select the index of the sheet you wish to process:"
+							$SHEETINFO = Get-ExcelSheetInfo $InputFile | Select-Object Index,Name
+							$SHEETINFO
+							$SHEETIDX = Read-Host 'Index #'
+							$IMPORT = Import-Excel $InputFile -WorksheetName $($SHEETINFO | Where {$_.Index -eq "$SHEETIDX"} | Select-Object -ExpandProperty Name)
+						} Else {
+							$IMPORT = Import-Excel $InputFile
+						}
+					}
+				}
+			}
+		}
+		".csv" {
+			Write-Host "detected csv input file. importing..."
+			$IMPORT = Import-Csv $InputFile
 
+		}
+	}
+	# Let's Rename our properties to what we expect
+		$INFILE = $IMPORT | Select-Object @{Name="SourceSystem";Expression={$_."Source Prod Box"}},@{Name="SecurityStyle";Expression={$_."Security Style"}},@{Name="SourceFilesystem";Expression={$_."Source Filesystem"}},@{Name="SourceCapacityGB";Expression={$_."Source Prod Capacity (GB)"}},@{Name="TargetSystem";Expression={$_."Target Prod VNX Frame"}},@{Name="TargetDm";Expression={$_."Target Prod Physical Datamover"}},@{Name="TargetVdm";Expression={$_."Target Virtual DataMover"}},@{Name="TargetIp";Expression={$_."Prod IP"}},@{Name="TargetCifsServer";Expression={$_."Target CIFS Server Name"}},@{Name="TargetNfsServer";Expression={$_."Target NFS Server Name"}},@{Name="TargetStoragePool";Expression={$_."Target Prod Pool"}},@{Name="TargetDrSystem";Expression={$_."Target Cob VNX Frame"}},@{Name="TargetDrDm";Expression={$_."Target COB Physical Data Mover"}},@{Name="TargetDrIp";Expression={$_."Cob IP"}},@{Name="TargetDrFileSystem";Expression={$_."Target Cob File System"}},@{Name="TargetDrStoragePool";Expression={$_."Target Cob Pool"}}
 
+	If ($SourceSystem -ne $NULL) {
+		$INFILE = $INFILE | Where-Object {$_.SourceSystem -eq "$SourceSystem"}
+	}
+	# This array will be our working set
+	$OBJARRAY = @()
 	# Let's try to validate all the objects
 	$INDEX = 0
-	$PROPS = (($ALLSYSTEMS | Get-Member) | Where-Object {$_.MemberType -eq "NoteProperty"} | Select-Object -Property Name).Name
-	ForEach ($OBJ in $ALLSYSTEMS) {
+	$PROPS = (($INFILE | Get-Member) | Where-Object {$_.MemberType -eq "NoteProperty"} | Select-Object -Property Name).Name
+	ForEach ($OBJ in $INFILE) {
 		$INDEX++
 		$VALID = $True
 		ForEach ($PROP in $PROPS) {
-			If ($OBJ.$PROP -contains $NULL -or $OBJ.$PROP -match "N/A") {
+			If ($OBJ.$PROP -contains $NULL -or $OBJ.$PROP -match "N/A" -and $OBJ.$PROP -ne "TargetNfsServer" -or $OBJ.$PROP -ne "TargetCifsServer") {
 				$VALID = $False
 			}
 		}
-		If (!($VALID)) {
-
-		}
-			
+		$OBJ | Add-Member -Name IsValid -MemberType NoteProperty -Value $VALID	
+		$OBJARRAY += $OBJ
 	}
 	# Define Output Array
 	$OUTPUT = @()
 
-}
 
+}
 PROCESS {
 	# To do:
 	#
-	# Interconnect commands not filtering out "N/A" systems
-	# 	Neither is the Replication Passphrase
-	# 	Or Prod Checkpoint commands?
-	# 	Neither is PROD FS Creation
-	# 	Prod Dedupe
-	# 	Mount Commands
-	# 	Qtree Commands
-	# 	Interface attach
-	# 	VDM Creation
-	# 	Heading 
-	#
+	# All filtering needs to be revised
 	# Create commands and append them to the $OUTPUT array
 	# This SUBSET is sufficiently filtered for VDM Creation commands on the target production side
-	$SUBSET = $ALLSYSTEMS | 
-		Where-Object {($_.TargetSystem -notmatch "N/A" -and $_.TargetSystem -ne "") -and ($_.TargetVdm -notmatch "N/A" -and $_.TargetVdm -ne "") -and ($_.TargetStoragePool -ne "" -and $_.TargetStoragePool -notmatch "N/A")} | 
-			Sort-Object -Property TargetVdm -Unique
+	
+	#$SUBSET = $OBJARRAY | 
+	#	Where-Object {($_.TargetSystem -notmatch "N/A" -and $_.TargetSystem -ne "") -and ($_.TargetVdm -notmatch "N/A" -and $_.TargetVdm -ne "") -and ($_.TargetStoragePool -ne "" -and $_.TargetStoragePool -notmatch "N/A")} | 
+	#		Sort-Object -Property TargetVdm -Unique
+	
+	$OBJCOUNT = $OBJARRAY | Measure-Object | Select-Object -ExpandProperty Count
+	$VALIDOBJ = $OBJARRAY | Where-Object {$_.IsValid -eq $True} | Measure-Object | Select-Object -ExpandProperty Count
+	Write-Host "$VALIDOBJ of $OBJCOUNT objects are valid (no properties missing)..."
+	Write-Host "This may affect the generated output, take special care to ensure"
+	Write-Host "valid commands are generated.  If possible, fill in all properties"
+	Write-Host "and run this script again."
+	Write-Host "Hit <CTRL>+C to exit now, or this script will contine in a few seconds"
+	Start-Sleep -s 7
+
+
+	$SUBSET = $OBJARRAY | Sort-Object -Property TargetVdm -Unique
 	ForEach ($OBJ in $SUBSET) {
-			# Generate Prod VDM Creation Commands
-			$CMDSTR = "nas_server -name $($OBJ.TargetVDM) -type vdm -create $($OBJ.TargetDM) -setstate loaded pool=$($OBJ.TargetStoragePool)"
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "prdVdmCreate";
-				CommandHeading = "`r`n## VDM Creations Commands (PROD)`r`n";
-				CommandString = $CMDSTR
+			If ($($OBJ.IsValid) -eq $True) {
+				# Generate Prod VDM Creation Commands
+				$CMDSTR = "nas_server -name $($OBJ.TargetVDM) -type vdm -create $($OBJ.TargetDM) -setstate loaded pool=$($OBJ.TargetStoragePool)"
+				$OUTPUT += New-Object -TypeName PSObject -Property @{
+					SourceSystem = $OBJ.SourceSystem;
+					TargetSystem = $OBJ.TargetSystem;
+					TargetDrSystem = $OBJ.TargetDrSystem;
+					CommandType = "prdVdmCreate";
+					CommandHeading = "`r`n## VDM Creations Commands (PROD)`r`n";
+					CommandString = $CMDSTR
+				}
+				# Generate Prod VDM Int Attach Commands
+				$CMDSTR = "nas_server -vdm $($OBJ.TargetVDM) -attach <INT_NAME>"
+				$OUTPUT += New-Object -TypeName PSObject -Property @{
+					SourceSystem = $OBJ.SourceSystem;
+					TargetSystem = $OBJ.TargetSystem;
+					TargetDrSystem = $OBJ.TargetDrSystem;
+					CommandType = "prdVdmAttachInt";
+					CommandHeading = "`r`n## VDM Attach Interface Commands (PROD)`r`n";
+					CommandString = "$CMDSTR"
+				} 
 			}
-			# Generate Prod VDM Int Attach Commands
-			$CMDSTR = "nas_server -vdm $($OBJ.TargetVDM) -attach <INT_NAME>"
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "prdVdmAttachInt";
-				CommandHeading = "`r`n## VDM Attach Interface Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
-			} 
 		}
-	$SUBSET = $ALLSYSTEMS | 
-		Where-Object {$_.TargetDrSystem -notmatch "N/A" -or $_.TargetDrSystem -ne "" -and $_.TargetDrVdm -notmatch "N/A" -or $_.TargetDrVdm -ne ""} | 
-			Sort-Object -Property TargetDrSystem,TargetDrVdm -Unique
+	#$SUBSET = $OBJARRAY | 
+	#	Where-Object {$_.TargetDrSystem -notmatch "N/A" -or $_.TargetDrSystem -ne "" -and $_.TargetDrVdm -notmatch "N/A" -or $_.TargetDrVdm -ne ""} | 
+	#		Sort-Object -Property TargetDrSystem,TargetDrVdm -Unique
+	$SUBSET = $OBJARRAY | Sort-Object TargetVdm,TargetDrSystem
 	ForEach ($OBJ in $SUBSET) {
-			# Generate Cob(DR) VDM Creation Commands
+			# Generate PROD VDM Replication Commands
 			$CMDSTR = "nas_replicate -create $($OBJ.TargetVDM)_REP -source -vdm $($OBJ.TargetVDM) -destination -pool id=<POOL_ID> -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
@@ -152,7 +214,7 @@ PROCESS {
 				CommandString = "$CMDSTR"
 			}
 		}
-	$SUBSET = $ALLSYSTEMS | 
+	$SUBSET = $OBJARRAY | 
 		Where-Object {$_.TargetSystem -notmatch "N/A" -or $_.TargetSystem -ne "" -and $_.TargetDrSystem -notmatch "N/A" -or $_.TargetDrSystem -ne ""} | 
 			Sort-Object TargetSystem,TargetDm,TargetDrSystem,TargetDrDm -Unique
 	ForEach ($OBJ in $SUBSET) {
@@ -213,7 +275,7 @@ PROCESS {
 			CommandString = "$CMDSTR"
 		}
 	}
-	$SUBSET = $ALLSYSTEMS | 
+	$SUBSET = $OBJARRAY | 
 		Where-Object {$_.TargetIp -match "([0-9]{1,3}\.){3}[0-9]{1,3}$"} | 
 			Sort-Object -Property TargetIp -Unique
 	ForEach ($OBJ in $SUBSET) {
@@ -228,7 +290,7 @@ PROCESS {
 			CommandString = "$CMDSTR"
 		}
 	}
-	$SUBSET = $ALLSYSTEMS | 
+	$SUBSET = $OBJARRAY | 
 		Where-Object {$_.TargetDrIp -match "([0-9]{1,3}\.){3}[0-9]{1,3}$"} | 
 			Sort-Object -Property TargetDrIp -Unique
 	ForEach ($OBJ in $SUBSET) {
@@ -243,7 +305,7 @@ PROCESS {
 			CommandString = "$CMDSTR"
 		}
 	}
-	$SUBSET = $ALLSYSTEMS | 
+	$SUBSET = $OBJARRAY | 
 		Where-Object {$_.TargetCifsServer -ne "" -or $_.TargetCifsServer -notmatch "N/A" -and $_.TargetProtocol -eq "CIFS" -or $_.TargetProtocol -eq "BOTH"} | 
 			Sort-Object -Property TargetCifsServer -Unique
 	ForEach ($OBJ in $SUBSET) {
@@ -268,7 +330,7 @@ PROCESS {
 			CommandString = "$CMDSTR"
 		}
 	}
-	$SUBSET = $ALLSYSTEMS | 
+	$SUBSET = $OBJARRAY | 
 		Where-Object {$_.TargetNfsServer -ne "" -or $_.TargetNfsSever -notmatch "N/A"} |
 			Sort-Object -Property TargetNfsServer -Unique
 	ForEach ($OBJ in $SUBSET) {
@@ -343,7 +405,7 @@ PROCESS {
 			}
 		}
 	}
-	$SUBSET = $ALLSYSTEMS | 
+	$SUBSET = $OBJARRAY | 
 		Where-Object {$_.TargetSystem -ne "" -or $_.TargetSystem -notmatch "N/A" -and $_.TargetVdm -ne "" -or $_.TargetVdm -notmatch "N/A"} | 
 			Sort-Object -Property TargetFilesystem,TargetVdm -Unique
 	ForEach ($OBJ in $SUBSET) {
@@ -391,7 +453,7 @@ PROCESS {
 		}
 		# ***** Left off here *****
 		# Need to revise filtering in $SUBSET definition
-		# Should be $ALLSYSTEMS | Where <something> | sort -property <props> -Unique
+		# Should be $OBJARRAY | Where <something> | sort -property <props> -Unique
 		# Qtree commands
 		If ($($OBJ.TargetDm) -match "server_[0-9]$") {
 			$TGTDM = $($OBJ.TargetDm)
@@ -551,4 +613,3 @@ END {
 		}
 	}
 }
-
