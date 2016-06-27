@@ -557,14 +557,18 @@ END {
 	switch ($OutFormat) {
 		TXT {	
 			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
+			New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts" -ItemType directory | Out-Null
 			$SYSTEMS = $OUTPUT | Select-Object -Property SourceSystem,TargetSystem -Unique
 			$CMDBLK = "``````"
 			ForEach ($OBJ in $SYSTEMS) {
 				If ($($OBJ.SourceSystem) -ne "" -and $($OBJ.TargetSystem) -ne "") {
-					New-Item -Path .\ -Name $($OBJ.SourceSystem) -ItemType directory -Force | Out-Null
-					Write-Output "# Provisioning Script for $($OBJ.TargetSystem)`r`n" | Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-					Write-Output "**These commands still need to be validated by hand, as all values cannot be added programmatically**" | Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-					Write-Output "**Run a Find for the string 'N/A' and placeholders enclosed in <>**" | Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)" -ItemType directory -Force | Out-Null
+					Write-Output "# Provisioning Script for $($OBJ.TargetSystem)`r`n" |
+						Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					Write-Output "**These commands still need to be validated by hand, as all values cannot be added programmatically**" |
+						Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					Write-Output "**Run a Find for the string 'N/A' and placeholders enclosed in <>**" |
+						Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 				}
 			}
 			$CMDTYPES = $OUTPUT | 
@@ -572,40 +576,41 @@ END {
 					Sort-Object -Property CommandType -Descending
 			ForEach ($OBJ in $CMDTYPES) {
 				Write-Output "$($OBJ.CommandHeading)" |
-					Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 				#Write-Output "$($OBJ.Comments)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 				Write-Output "$CMDBLK" |
-					Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 				$ALLCMDS = $OUTPUT |
 					Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.TargetSystem -eq "$($OBJ.TargetSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
 				ForEach ($CMD in $ALLCMDS) {
 					#If ($($CMD.Comments) -ne "") {
 					#	Write-Output "$($CMD.CommandString) # $($CMD.Comments)" | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 					#} Else {
-						Write-Output "$($CMD.CommandString)" |
-							Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-					#}
-					Write-Output "$CMDBLK" |
-						Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					Write-Output "$($CMD.CommandString)" |
+						Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+				}
+				Write-Output "$CMDBLK" |
+					Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 				} 
 			}
-		}
 		CSV {
 			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
+			New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts" -ItemType directory | Out-Null
 			$ALLTGTSYS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
 			ForEach ($TGTSYS in $ALLTGTSYS) {
-				New-Item -Path .\ -Name $($OBJ.SourceSystem) -ItemType directory
+				New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts\$($TGTSYS.SourceSystem)" -ItemType directory -Force | Out-Null
 				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$($TGTSYS.TargetSystem)"} 
-				$ALLCMDS | Export-Csv -NoTypeInformation -Path ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).csv"
+				$ALLCMDS | Export-Csv -NoTypeInformation -Path ".\${TIMESTAMP}_provisioning-scripts\$($TGTSYS.SourceSystem)\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).csv"
 			}
 		} 
 		JSON {
 			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
+			New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts" -ItemType directory | Out-Null
 			$ALLTGTSYS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
 			ForEach ($TGTSYS in $ALLTGTSYS) {
-				New-Item -Path .\ -Name $($OBJ.SourceSystem) -ItemType directory
+				New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts\$($TGTSYS.SourceSystem)" -ItemType directory -Force | Out-Null
 				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$($TGTSYS.TargetSystem)"} 
-				$ALLCMDS | ConvertTo-Json | Out-File -FilePath ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).json"
+				$ALLCMDS | ConvertTo-Json | Out-File -FilePath ".\${TIMESTAMP}_provisioning-scripts\$($TGTSYS.SourceSystem)\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).json"
 			}
 		}
 		default {
