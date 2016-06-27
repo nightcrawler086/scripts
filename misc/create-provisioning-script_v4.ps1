@@ -561,7 +561,7 @@ END {
 			$CMDBLK = "``````"
 			ForEach ($OBJ in $SYSTEMS) {
 				If ($($OBJ.SourceSystem) -ne "" -and $($OBJ.TargetSystem) -ne "") {
-					New-Item -Path .\ -Name $($OBJ.SourceSystem) -ItemType directory | Out-Null
+					New-Item -Path .\ -Name $($OBJ.SourceSystem) -ItemType directory -Force | Out-Null
 					Write-Output "# Provisioning Script for $($OBJ.TargetSystem)`r`n" | Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 					Write-Output "**These commands still need to be validated by hand, as all values cannot be added programmatically**" | Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 					Write-Output "**Run a Find for the string 'N/A' and placeholders enclosed in <>**" | Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
