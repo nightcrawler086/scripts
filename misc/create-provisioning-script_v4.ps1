@@ -116,9 +116,16 @@ BEGIN {
 		}
 	}
 	# Let's Rename our properties to what we expect
-		$INFILE = $IMPORT | Select-Object @{Name="SourceSystem";Expression={$_."Source Prod Box"}},@{Name="SecurityStyle";Expression={$_."Security Style"}},@{Name="SourceFilesystem";Expression={$_."Source Filesystem"}},@{Name="SourceCapacityGB";Expression={$_."Source Prod Capacity (GB)"}},@{Name="TargetSystem";Expression={$_."Target Prod VNX Frame"}},@{Name="TargetDm";Expression={$_."Target Prod Physical Datamover"}},@{Name="TargetVdm";Expression={$_."Target Virtual DataMover"}},@{Name="TargetIp";Expression={$_."Prod IP"}},@{Name="TargetCifsServer";Expression={$_."Target CIFS Server Name"}},@{Name="TargetNfsServer";Expression={$_."Target NFS Server Name"}},@{Name="TargetStoragePool";Expression={$_."Target Prod Pool"}},@{Name="TargetDrSystem";Expression={$_."Target Cob VNX Frame"}},@{Name="TargetDrDm";Expression={$_."Target COB Physical Data Mover"}},@{Name="TargetDrIp";Expression={$_."Cob IP"}},@{Name="TargetDrFileSystem";Expression={$_."Target Cob File System"}},@{Name="TargetDrStoragePool";Expression={$_."Target Cob Pool"}}
+	$INFILE = $IMPORT | Select-Object @{Name="SourceSystem";Expression={$_."Source Prod Box"}},@{Name="SecurityStyle";Expression={$_."Security Style"}}, `
+	@{Name="SourceFilesystem";Expression={$_."Source Filesystem"}},@{Name="SourceCapacityGB";Expression={$_."Source Prod Capacity (GB)"}},`
+	@{Name="TargetSystem";Expression={$_."Target Prod VNX Frame"}},@{Name="TargetDm";Expression={$_."Target Prod Physical Datamover"}}, `
+	@{Name="TargetVdm";Expression={$_."Target Virtual DataMover"}},@{Name="TargetIp";Expression={$_."Prod IP"}}, `
+	@{Name="TargetCifsServer";Expression={$_."Target CIFS Server Name"}},@{Name="TargetNfsServer";Expression={$_."Target NFS Server Name"}}, `
+	@{Name="TargetStoragePool";Expression={$_."Target Prod Pool"}},@{Name="TargetDrSystem";Expression={$_."Target Cob VNX Frame"}}, `
+	@{Name="TargetDrDm";Expression={$_."Target COB Physical Data Mover"}},@{Name="TargetDrIp";Expression={$_."Cob IP"}}, `
+	@{Name="TargetDrFilesystem";Expression={$_."Target Cob File System"}},@{Name="TargetDrStoragePool";Expression={$_."Target Cob Pool"}}
 
-	If ($SourceSystem -ne $NULL) {
+	If ($SourceSystem -ne $NULL -and $SourceSystem -ne "") {
 		$INFILE = $INFILE | Where-Object {$_.SourceSystem -eq "$SourceSystem"}
 	}
 	# This array will be our working set
@@ -165,33 +172,31 @@ PROCESS {
 
 	$SUBSET = $OBJARRAY | Sort-Object -Property TargetVdm -Unique
 	ForEach ($OBJ in $SUBSET) {
-			If ($($OBJ.IsValid) -eq $True) {
-				# Generate Prod VDM Creation Commands
-				$CMDSTR = "nas_server -name $($OBJ.TargetVDM) -type vdm -create $($OBJ.TargetDM) -setstate loaded pool=$($OBJ.TargetStoragePool)"
-				$OUTPUT += New-Object -TypeName PSObject -Property @{
-					SourceSystem = $OBJ.SourceSystem;
-					TargetSystem = $OBJ.TargetSystem;
-					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = "prdVdmCreate";
-					CommandHeading = "`r`n## VDM Creations Commands (PROD)`r`n";
-					CommandString = $CMDSTR
-				}
-				# Generate Prod VDM Int Attach Commands
-				$CMDSTR = "nas_server -vdm $($OBJ.TargetVDM) -attach <INT_NAME>"
-				$OUTPUT += New-Object -TypeName PSObject -Property @{
-					SourceSystem = $OBJ.SourceSystem;
-					TargetSystem = $OBJ.TargetSystem;
-					TargetDrSystem = $OBJ.TargetDrSystem;
-					CommandType = "prdVdmAttachInt";
-					CommandHeading = "`r`n## VDM Attach Interface Commands (PROD)`r`n";
-					CommandString = "$CMDSTR"
-				} 
+			# Generate Prod VDM Creation Commands
+			$CMDSTR = "nas_server -name $($OBJ.TargetVDM) -type vdm -create $($OBJ.TargetDM) -setstate loaded pool=$($OBJ.TargetStoragePool)"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdVdmCreate";
+				CommandHeading = "`r`n## VDM Creations Commands (PROD)`r`n";
+				CommandString = $CMDSTR
 			}
+			# Generate Prod VDM Int Attach Commands
+			$CMDSTR = "nas_server -vdm $($OBJ.TargetVDM) -attach <INT_NAME>"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdVdmAttachInt";
+				CommandHeading = "`r`n## VDM Attach Interface Commands (PROD)`r`n";
+				CommandString = "$CMDSTR"
 		}
+	}
 	#$SUBSET = $OBJARRAY | 
 	#	Where-Object {$_.TargetDrSystem -notmatch "N/A" -or $_.TargetDrSystem -ne "" -and $_.TargetDrVdm -notmatch "N/A" -or $_.TargetDrVdm -ne ""} | 
 	#		Sort-Object -Property TargetDrSystem,TargetDrVdm -Unique
-	$SUBSET = $OBJARRAY | Sort-Object TargetVdm,TargetDrSystem
+	$SUBSET = $OBJARRAY | Sort-Object TargetVdm,TargetDrSystem -Unique
 	ForEach ($OBJ in $SUBSET) {
 			# Generate PROD VDM Replication Commands
 			$CMDSTR = "nas_replicate -create $($OBJ.TargetVDM)_REP -source -vdm $($OBJ.TargetVDM) -destination -pool id=<POOL_ID> -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
@@ -407,20 +412,11 @@ PROCESS {
 	}
 	$SUBSET = $OBJARRAY | 
 		Where-Object {$_.TargetSystem -ne "" -or $_.TargetSystem -notmatch "N/A" -and $_.TargetVdm -ne "" -or $_.TargetVdm -notmatch "N/A"} | 
-			Sort-Object -Property TargetFilesystem,TargetVdm -Unique
+			Sort-Object -Property SourceFilesystem,TargetVdm -Unique
 	ForEach ($OBJ in $SUBSET) {
-		# If no TargetFilesystem property exists, use the SourceFilesystem property
-		If (!(Get-Member -InputObject $OBJ -Name TargetFilesystem -MemberType NoteProperty)) {
-			$TargetFileSystem = $($OBJ.SourceFilesystem)
-		}
-		If (!(Get-Member -InputObject $OBJ -Name TargetQtree -MemberType NoteProperty)) {
-			$TargetQtree = $($OBJ.SourceFilesystem)
-		}
-		If (!(Get-Member -InputObject $OBJ -Name TargetSecurityStyle -MemberType NoteProperty)) {
-			$TargetSecurityStyle = $($OBJ.SourceSecurityStyle)
-		}
-		If ($($OBJ.TargetSecurityStyle) -ne "" -or $($OBJ.TargetSecurityStyle) -notmatch "N/A" -and $($OBJ.TargetCapacityGB) -ne "" -or $($OBJ.TargetCapacityGB) -notmatch "N/A" -and $($OBJ.TargetStroagePool) -ne "" -or $($OBJ.TargetStoragePool) -notmatch "N/A") {
-			$CMDSTR = "nas_fs -name $TargetFilesystem -type $TargetSecurityStyle -create size=$($OBJ.TargetCapacityGB)GB pool=$($OBJ.TargetStoragePool) -option slice=y"
+		If ($($OBJ.SecurityStyle) -ne "" -or $($OBJ.SecurityStyle) -notmatch "N/A" -and $($OBJ.SourceCapacityGB) -ne "" -or $($OBJ.SourceCapacityGB) -notmatch "N/A" -and $($OBJ.TargetStroagePool) -ne "" -or $($OBJ.TargetStoragePool) -notmatch "N/A") {
+			# Target Prod FS Create Commands
+			$CMDSTR = "nas_fs -name $($OBJ.SourceFilesystem) -type $($OBJ.SecurityStyle) -create size=$($OBJ.SourceCapacityGB)GB pool=$($OBJ.TargetStoragePool) -option slice=y"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -431,7 +427,7 @@ PROCESS {
 			}
 		}
 		# Target Prod FS Dedupe Commands
-		$CMDSTR = "fs_dedupe -modify $TargetFilesystem -state on"
+		$CMDSTR = "fs_dedupe -modify $($OBJ.SourceFilesystem) -state on"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -442,7 +438,7 @@ PROCESS {
 			Comments = "`r`n**Only run dedupe commands if dedupe is enabled on the source volume**`r`n"
 		}
 		# Target Prod Checkpoint Commands
-		$CMDSTR = "nas_ckpt_schedule -create $TargetFilesystem_DAILY_SCHED -filesystem $TargetFilesystem -description ""1730hrs daily checkpoint schedule for $TargetFilesystem"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:30 -keep 7"
+		$CMDSTR = "nas_ckpt_schedule -create $($OBJ.SourceFilesystem)_DAILY_SCHED -filesystem $($OBJ.SourceFilesystem) -description ""1730hrs daily checkpoint schedule for $($OBJ.SourceFilesystem)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:30 -keep 7"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -451,14 +447,10 @@ PROCESS {
 			CommandHeading = "`r`n## Filesystem Checkpoint Commands (PROD)`r`n";
 			CommandString = "$CMDSTR"
 		}
-		# ***** Left off here *****
-		# Need to revise filtering in $SUBSET definition
-		# Should be $OBJARRAY | Where <something> | sort -property <props> -Unique
-		# Qtree commands
 		If ($($OBJ.TargetDm) -match "server_[0-9]$") {
 			$TGTDM = $($OBJ.TargetDm)
 			$DMNUM = $TGTDM.Substring(7)
-			$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_<VDM_NUM>/$TargetFilesystem/$TargetQtree"
+			$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_<VDM_NUM>/$($OBJ.SourceFilesystem)/$($OBJ.SourceFilesystem)"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -468,7 +460,7 @@ PROCESS {
 				CommandHeading = "`r`n## Filesystem Qtree Commands (PROD)`r`n";
 			} 
 		} Else {
-			$CMDSTR = "mkdir /nasmcd/quota/slot_<DM_NUM>/root_vdm_<VDM_NUM>/$TargetFilesystem/$TargetQtree)"
+			$CMDSTR = "mkdir /nasmcd/quota/slot_<DM_NUM>/root_vdm_<VDM_NUM>/$($OBJ.SourceFilesystem)/$($OBJ.SourceFilesystem))"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -480,7 +472,7 @@ PROCESS {
 			}
 		} 
 		# FS Mount Commands
-		$CMDSTR = "server_mount $($OBJ.TargetVDM) $TargetFilesystem /$TargetFilesystem"
+		$CMDSTR = "server_mount $($OBJ.TargetVDM) $($OBJ.SourceFilesystem) /$($OBJ.SourceFilesystem)"
         $OUTPUT += New-Object -TypeName PSObject -Property @{
 	        SourceSystem = $OBJ.SourceSystem;
 		    TargetSystem = $OBJ.TargetSystem;
@@ -490,8 +482,8 @@ PROCESS {
 		    CommandString = "$CMDSTR"
         }
 		# FS Export Commands
-		If ($($OBJ.TargetProtocol) -eq "CIFS" -or $($OBJ.TargetProtocol) -eq "BOTH") {
-			$CMDSTR = "server_export $($OBJ.TargetVDM) -Protocol cifs -name $TargetFilesystem -o netbios=$($OBJ.TargetVDM) /$TargetFilesystem/$TargetFilesystem"
+		If ($($OBJ.TargetCifsServer) -notmatch "N/A" -and $($OBJ.TargetCifsServer) -ne "") {
+			$CMDSTR = "server_export $($OBJ.TargetVDM) -Protocol cifs -name $($OBJ.SourceFilesystem) -o netbios=$($OBJ.TargetVDM) /$($OBJ.SourceFilesystem)/$($OBJ.SourceFilesystem)"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -501,8 +493,8 @@ PROCESS {
 				CommandString = "$CMDSTR"
 			}
 		}
-		If ($($OBJ.TargetProtocol) -eq "NFS" -or $($OBJ.TargetProtocol) -eq "BOTH") {
-			$CMDSTR = "server_export $($OBJ.TargetVDM) -Protocol nfs -name $TargetFilesystem -o rw=<CLIENTS>,ro=<CLIENTS>,root=<CLIENTS> /$TargetFilesystem/$TargetQtree"
+		If ($($OBJ.TargetNfsServer) -notmatch "N/A" -and $($OBJ.TargetNfsServer) -ne "") {
+			$CMDSTR = "server_export $($OBJ.TargetVDM) -Protocol nfs -name $($OBJ.SourceFilesystem) -o rw=<CLIENTS>,ro=<CLIENTS>,root=<CLIENTS> /$($OBJ.SourceFilesystem)/$($OBJ.SourceFilesystem)"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -513,11 +505,8 @@ PROCESS {
 			}
 		}
 		# FS Replication Commands
-		If (!(Get-Member -InputObject $OBJ -Name TargetDrFilesystem -MemberType NoteProperty)) {
-			$TargetDrFilesystem = $($OBJ.SourceFilesystem)
-		}
-		If ($($OBJ.TargetDrFilesystem) -ne "" -or $($OBJ.TargetDrFilesystem) -notmatch "N/A") {
-			$CMDSTR = "nas_replicate -create $TargetFilesystem_REP -source -fs $TargetFilesystem -destination -fs $TargetDrFilesystem -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
+		If ($($OBJ.TargetDrFilesystem) -ne "" -and $($OBJ.TargetDrFilesystem) -notmatch "N/A") {
+			$CMDSTR = "nas_replicate -create $($OBJ.SourceFilesystem)_REP -source -fs $($OBJ.SourceFilesystem) -destination -fs $($OBJ.TargetDrFilesystem) -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -526,40 +515,42 @@ PROCESS {
 				CommandHeading = "`r`n## Filesystem Replication Commands (PROD)`r`n";
 				CommandString = "$CMDSTR"
 			}
-			# Cob (DR) FS Creation Commands
-			$CMDSTR = "nas_fs -name $TargetDrFilesystem -create samesize:$TargetFilesystem:cel:$($OBJ.TargetDrSystem) pool:$($OBJ.TargetDrStoragePool)" 
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "drFsCreate";
-				CommandHeading = "`r`n## Filesystem Creation Commands (DR)`r`n";
-				CommandString = "$CMDSTR"
-			}
-			# Cob (DR) Mount Commands
-			$CMDSTR = "server_mount $($OBJ.TargetVDM) -o ro $TargetDrFilesystem /$TargetDrFilesystem"
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "drFsMnt";
-				CommandHeading = "`r`n## Filesystem Mount Commands (DR)`r`n";
-				CommandString = "$CMDSTR"
-			}
-			# Cob (DR) Checkpoint Commands
-			$CMDSTR = "nas_ckpt_schedule -create $TargetDrFilesystem`_DAILY_SCHED -filesystem $TargetDrFilesystem -description ""1730hrs daily checkpoint schedule for $TargetDrFilesystem"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:30 -keep 7"
-			$OUTPUT += New-Object -TypeName PSObject -Property @{
-				SourceSystem = $OBJ.SourceSystem;
-				TargetSystem = $OBJ.TargetSystem;
-				TargetDrSystem = $OBJ.TargetDrSystem;
-				CommandType = "drFsCkpt";
-				CommandHeading = "`r`n## Filesystem Checkpoint Commands (DR)`r`n";
-				CommandString = "$CMDSTR"
-			}
+		}
+	}
+	$SUBSET = $OBJARRAY | Where-Object {$_.TargetDrSystem -ne "" -and $_.TargetDrSystem -notmatch "N/A" -and $_.TargetDrFilesystem -ne "" -and $_.TargetDrFilesystem -notmatch "N/A"}
+	ForEach ($OBJ in $SUBSET) {
+		# Cob (DR) FS Creation Commands
+		$CMDSTR = "nas_fs -name $($OBJ.TargetDrFilesystem) -create samesize:$($OBJ.SourceFilesystem):cel:$($OBJ.TargetDrSystem) pool:$($OBJ.TargetDrStoragePool)" 
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "drFsCreate";
+			CommandHeading = "`r`n## Filesystem Creation Commands (DR)`r`n";
+			CommandString = "$CMDSTR"
+		}
+		# Cob (DR) Mount Commands
+		$CMDSTR = "server_mount $($OBJ.TargetVDM) -o ro $($OBJ.TargetDrFilesystem) /$($OBJ.TargetDrFilesystem)"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "drFsMnt";
+			CommandHeading = "`r`n## Filesystem Mount Commands (DR)`r`n";
+			CommandString = "$CMDSTR"
+		}
+		# Cob (DR) Checkpoint Commands
+		$CMDSTR = "nas_ckpt_schedule -create $($OBJ.TargetDrFilesystem)`_DAILY_SCHED -filesystem $($OBJ.TargetDrFilesystem) -description ""1730hrs daily checkpoint schedule for $($OBJ.TargetDrFilesystem)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:30 -keep 7"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "drFsCkpt";
+			CommandHeading = "`r`n## Filesystem Checkpoint Commands (DR)`r`n";
+			CommandString = "$CMDSTR"
 		}
 	}
 }
-
 
 END {
 
@@ -570,25 +561,32 @@ END {
 			$CMDBLK = "``````"
 			ForEach ($OBJ in $SYSTEMS) {
 				If ($($OBJ.SourceSystem) -ne "" -and $($OBJ.TargetSystem) -ne "") {
-					Write-Output "# Provisioning Script for $($OBJ.TargetSystem)`r`n" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt"
+					New-Item -Path .\ -Name $($OBJ.SourceSystem) -ItemType directory | Out-Null
+					Write-Output "# Provisioning Script for $($OBJ.TargetSystem)`r`n" | Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					Write-Output "**These commands still need to be validated by hand, as all values cannot be added programmatically**" | Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					Write-Output "**Run a Find for the string 'N/A' and placeholders enclosed in <>**" | Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 				}
 			}
 			$CMDTYPES = $OUTPUT | 
 				Sort-Object -Property SourceSystem,TargetSystem,CommandType -Unique | 
 					Sort-Object -Property CommandType -Descending
 			ForEach ($OBJ in $CMDTYPES) {
-				Write-Output "$($OBJ.CommandHeading)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+				Write-Output "$($OBJ.CommandHeading)" |
+					Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 				#Write-Output "$($OBJ.Comments)" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-				Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
-				$ALLCMDS = $OUTPUT | 
+				Write-Output "$CMDBLK" |
+					Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+				$ALLCMDS = $OUTPUT |
 					Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.TargetSystem -eq "$($OBJ.TargetSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
 				ForEach ($CMD in $ALLCMDS) {
 					#If ($($CMD.Comments) -ne "") {
 					#	Write-Output "$($CMD.CommandString) # $($CMD.Comments)" | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 					#} Else {
-						Write-Output "$($CMD.CommandString)" | Tee-Object "${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+						Write-Output "$($CMD.CommandString)" |
+							Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($CMD.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 					#}
-					Write-Output "$CMDBLK" | Tee-Object "${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
+					Write-Output "$CMDBLK" |
+						Tee-Object ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($OBJ.SourceSystem)_$($OBJ.TargetSystem)-script.txt" -Append
 				} 
 			}
 		}
@@ -596,16 +594,18 @@ END {
 			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
 			$ALLTGTSYS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
 			ForEach ($TGTSYS in $ALLTGTSYS) {
+				New-Item -Path .\ -Name $($OBJ.SourceSystem) -ItemType directory
 				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$($TGTSYS.TargetSystem)"} 
-				$ALLCMDS | Export-Csv -NoTypeInformation -Path ".\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).csv"
+				$ALLCMDS | Export-Csv -NoTypeInformation -Path ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).csv"
 			}
 		} 
 		JSON {
 			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
 			$ALLTGTSYS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
 			ForEach ($TGTSYS in $ALLTGTSYS) {
+				New-Item -Path .\ -Name $($OBJ.SourceSystem) -ItemType directory
 				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$($TGTSYS.TargetSystem)"} 
-				$ALLCMDS | ConvertTo-Json | Out-File -FilePath ".\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).json"
+				$ALLCMDS | ConvertTo-Json | Out-File -FilePath ".\$($OBJ.SourceSystem)\${TIMESTAMP}_$($TGTSYS.SourceSystem)_$($TGTSYS.TargetSystem).json"
 			}
 		}
 		default {
