@@ -12,22 +12,6 @@ Param (
 )
 
 BEGIN {
-# Don't think I'll need this anymore...
-<#		
-	If ($SourceSystem -ne $NULL) {
-		$OBJARRAY = Import-Csv -Path $InputFile | Where-Object {$_.SourceSystem -eq "$SourceSystem"}
-	} ElseIf ($SourceSystem -eq $NULL) {
-		Write-Host "No source system specified..."
-		Write-Host "Do you want to get all commands for all systems?"
-		$RESPONSE = Read-Host '(Y/y/N/n)?'
-		If ($RESPONSE -eq "Y") {
-			$OBJARRAY = Import-Csv -Path $InputFile
-		}
-	} Else {
-			Write-Host "Nothing to do..."
-			Exit 1
-	}
-#>
 
 	If ($OutFormat -eq "") {
 		Write-Host "No output format specified..."
@@ -91,7 +75,7 @@ BEGIN {
 							$IMPORT = Import-Excel $InputFile
 						}
 					}
-				} ElseIf (($PSVersionTable.PSVersion.Major) -le 4){
+				} ElseIf (($PSVersionTable.PSVersion.Major) -le 4) {
 					iex (new-object System.Net.WebClient).DownloadString('https://raw.github.com/dfinke/ImportExcel/master/Install.ps1')
 					If ($LastExitCode -eq 0) {
 						$SHEETS = Get-ExcelSheetInfo $InputFile | Measure-Object | Select-Object -ExpandProperty Count
@@ -137,7 +121,8 @@ BEGIN {
 		$INDEX++
 		$VALID = $True
 		ForEach ($PROP in $PROPS) {
-			If ($OBJ.$PROP -contains $NULL -or $OBJ.$PROP -match "N/A" -and $OBJ.$PROP -ne "TargetNfsServer" -or $OBJ.$PROP -ne "TargetCifsServer") {
+			#If ($OBJ.$PROP -contains $NULL -or $OBJ.$PROP -match "N/A" -and $OBJ.$PROP -ne "TargetNfsServer" -or $OBJ.$PROP -ne "TargetCifsServer") {
+			If ($OBJ.$PROP -contains $NULL -and $OBJ.$PROP -match "N/A" -and $OBJ.$PROP -ne "TargetNfsServer" -and $OBJ.$PROP -ne "TargetCifsServer") {
 				$VALID = $False
 			}
 		}
@@ -166,7 +151,7 @@ PROCESS {
 	Write-Host "This may affect the generated output, take special care to ensure"
 	Write-Host "valid commands are generated.  If possible, fill in all properties"
 	Write-Host "and run this script again."
-	Write-Host "Hit <CTRL>+C to exit now, or this script will contine in a few seconds"
+	Write-Host "Hit CTRL+C to exit now, or this script will contine in a few seconds"
 	Start-Sleep -s 7
 
 
