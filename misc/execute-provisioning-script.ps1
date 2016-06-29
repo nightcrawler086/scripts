@@ -6,6 +6,17 @@ Param (
 
 BEGIN {
 
+	function log($TXT) {
+		Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - $TXT"
+	}
+	
+	# Define our log file
+	$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
+	$LOGFILE = ".\${TIMESTAMP}_execution-log.txt"
+	
+	# Entering Setup Phase
+	log "Starting Setup Phase" | Tee-Object $LOGFILE -Append
+
 	# We need the Posh-SSH Module.  We will try to detect/install it
 	If ((Get-Module -Name Posh-SSH)) {
 		Write-Host "Posh-SSH Module already installed and Imported"
@@ -24,6 +35,7 @@ BEGIN {
 			}
 		}
 	}
+
 	# Detect and import $InputFile
 	$InputFileExt = [System.IO.Path]::GetExtension("$InputFile")
 	switch ($InputFileExt) {
@@ -44,17 +56,20 @@ BEGIN {
 		}
 	}
 	# Define Array to hold our commands after validation
-	$OBJARRAY = @()
+	$CMDARRAY = @()
+
+	# Define array to hold our output (results)
+	$OUTPUT = @()
+
 	# Validate the $INFILE...as best we can
-	$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
-	$LOGFILE = ".\${TIMESTAMP}_execution-log.txt"
 	Write-Output "Logfile: $LOGFILE"
-	Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - Starting Validation Phase" | Tee-Object $LOGFILE -Append
+	log "Starting Validation Phase" | Tee-Object $LOGFILE -Append
 	$INDEX = 0
 	$PROPS = (($INFILE | Get-Member -MemberType NoteProperty)).Name
 	$OBJCOUNT = ($($INFILE | Measure-Object).Count) 
 	ForEach ($OBJ in $INFILE) {
 		$INDEX++
+		$REASON = @()
 		$VALID = $True
 		ForEach ($PROP in $PROPS) {
 			If (!(Get-Member -Name $PROP -InputObject $OBJ -MemberType NoteProperty)) {
@@ -63,33 +78,39 @@ BEGIN {
 		}
 		If ($($OBJ.CommandString) -match "[N]\/[A]" -or $($OBJ.CommandString) -match "\<[A-Z]*_[A-Z]*\>" -or $($OBJ.CommandString) -match "\<[A-Z]*\>") {
 			$VALID = $False	
+			$REASON += "CommandString contained `"N/A`" or placeholder value enclosed in <>"
 		}
 		If ($($OBJ.TargetSystem) -notmatch "^[a-zA-Z]{3}[c][t][i][n][a][s][v][0-9]{4}[x]$") {
 			$VALID = $False
+			$REASON += "TargetSystem did not match expected pattern"
 		}
-		# This is not working
-		#If ($($OBJ.CommandType) -notmatch "^[p][r][d][A-Za-z]*$" -or $($OBJ.CommandType) -notmatch "^[d][r][A-Za-z]*$") {
-		#	$VALID = $False
-		#}
+		If ($($OBJ.CommandType) -notmatch "^[p][r][d][a-zA-Z]*$" -and $($OBJ.CommandType) -notmatch "^[d][r][a-zA-Z]*$") {
+			$VALID = $False
+			$REASON += "CommandType did not match expected pattern"
+		}
 		$OBJ | Add-Member -Name IsValid -MemberType NoteProperty -Value $VALID
 		$OBJ | Add-Member -Name Index -MemberType NoteProperty -Value $INDEX
-		$OBJARRAY += $OBJ
-	}
-	# If we find invalid objects, spit them out and exit
-	$VALIDOBJ = ($($OBJARRAY | Where-Object {$_.IsValid -eq $True} | Measure-Object).Count)
-	Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - $VALIDOBJ of $OBJCOUNT objects are valid" | Tee-Object $LOGFILE -Append
-	If ($VALIDOBJ -ne $OBJCOUNT) {
-		$INVALIDOBJ = $OBJARRAY | Where-Object {$_.IsValid -eq $False}
-		Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - The following objects were determined to be invalid" | Tee-Object $LOGFILE -Append
-		ForEach ($OBJ in $INVALIDOBJ) {
-			Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - Index:$($OBJ.Index) | TargetSystem:$($OBJ.TargetSystem) | CommandType:$($OBJ.CommandType) | CommandString:$($OBJ.CommandString)" | Tee-Object $LOGFILE -Append
+		If ($($OBJ.IsValid) -eq $False) {
+			$OBJ | Add-Member -Name Reason -MemberType NoteProperty -Value $REASON
 		}
-		Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - There are $(($INVALIDOBJ | Measure-Object).Count) invalid objects that need to be corrected before the rest of this script will execute" | Tee-Object $LOGFILE -Append
-		Exit 1
+		$CMDARRAY += $OBJ
 	}
 
+	# If we find invalid objects, spit them out and exit
+	$VALIDOBJ = ($($CMDARRAY | Where-Object {$_.IsValid -eq $True} | Measure-Object).Count)
+	log "$VALIDOBJ of $OBJCOUNT objects are valid" | Tee-Object $LOGFILE -Append
+	If ($VALIDOBJ -ne $OBJCOUNT) {
+		$INVALIDOBJ = $CMDARRAY | Where-Object {$_.IsValid -eq $False}
+		log "The following objects were determined to be invalid" | Tee-Object $LOGFILE -Append
+		ForEach ($OBJ in $INVALIDOBJ) {
+			log "Index:$($OBJ.Index) | Reason:$($OBJ.Reason) | TargetSystem:$($OBJ.TargetSystem) | CommandType:$($OBJ.CommandType) | CommandString:$($OBJ.CommandString)" | Tee-Object $LOGFILE -Append
+		}
+		log "There are $(($INVALIDOBJ | Measure-Object).Count) invalid objects that need to be corrected before the rest of this script will execute" | Tee-Object $LOGFILE -Append
+		Exit 1
+	}
+	log "Validation Phase Complete" | Tee-Object $LOGFILE -Append
+
 }
-<#
 PROCESS {
 # Command types to iterate through (in order of execution):
 #
@@ -112,36 +133,76 @@ PROCESS {
 #
 # Script Logic
 #
-# Validate the input file (check for the right properties)
-# Check the commands (make sure not <MISSING_PORPERTY> type things exist)
-# Throw up some warnings (going to run commands as-is)
-# Test-Connection to CS (ping and SSH?)
+# Throw up some warnings (going to run commands as-is) 
 # Import commands from input file
 # Run commands, in specific order, logging output
-#
-	$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
-	$LOGFILE = ".\${TIMESTAMP}_execution-log.txt"
 	
-	# Begin Validation Phase 1	
-	Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - Starting Validation Phase" | Tee-Object $LOGFILE
-	$i = 0
-	ForEach ($OBJ in $COMMANDS) {
-		If (Get-Member -InputObject $OBJ -Name TargetSystem,CommandType,CommandString -MemberType Properties) {
-			$i = $i + 1
-		} 
+	# Begin testing if Target System is reachable	
+	log "Begin Test Network Connectivity Phase" | Tee-Object $LOGFILE -Append
+	$TGTSYS = $CMDARRAY | Select-Object -ExpandProperty TargetSystem -Unique
+	$TGTDRSYS = $CMDARRAY | Select-Object -ExpandProperty TargetDrSystem -Unique
+	
+	# Trying to ping systems
+	log "Trying to ping target systems" | Tee-Object $LOGFILE -Append
+	ForEach ($SYS in $TGTSYS) {
+		If (!(Test-Connection -BufferSize 32 -Count 1 -Quiet -ComputerName $SYS)) {
+			log "Could not ping host $SYS)" | Tee-Object $LOGFILE -Append
+		} Else {
+			log "Ping to $SYS was successful" | Tee-Object $LOGFILE -Append
+		}
 	}
-	If ($($COMMANDS | Measure-Object | Select-Object -ExpandProperty Count) -eq "$i") {
-		Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - $i objects of $($COMMANDS | Measure-Object | Select-Object -ExpandProperty Count) validated" | Tee-Object $LOGFILE -Append
-		Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - Validation Phase 1 Passed - All objects contain requried properties" | Tee-Object $LOGFILE -Append
-	} Else {
-		Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - $i objects of $($COMMANDS | Measure-Object | Select-Object -ExpandProperty Count) validated" | Tee-Object $LOGFILE -Append
-		Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - Not all objects contain the required properties" | Tee-Object $LOGFILE -Append
-		Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - Correct the input file and rerun this script" | Tee-Object $LOGFILE -Append
-		Write-Output "$(Get-Date -Format 'yyyy.MM.dd-HH:mm:ss') - Validation Phase 1 Failed - All objects do not contain requried properties" | Tee-Object $LOGFILE -Append
-		Exit 1
+	log "Trying to ping target dr systems" | Tee-Object $LOGFILE -Append
+	ForEach ($SYS in $TGTDRSYS) {
+		If (!(Test-Connection -BufferSize 32 -Count 1 -Quiet -ComputerName $SYS)) {
+			log "Could not ping host $SYS)" | Tee-Object $LOGFILE -Append
+		} Else {
+			log "Ping to $SYS was successful" | Tee-Object $LOGFILE -Append
+		}
 	}
+
+	# Trying to connect on port 22
+	log "Test connection to port 22 on target systems"
+	ForEach ($SYS in $TGTSYS) {
+		$TGTSYSSOCK = New-Object System.Net.Sockets.TcpClient("$SYS","22")
+			If ($TGTSYSSOCK.Connected) {
+				log "Port 22 on $SYS is open" | Tee-Object $LOGFILE -Append
+				$TGTSYSSOCK.Close()
+			} Else {
+				log "Could not connect to port 22 on $SYS" | Tee-Object $LOGFILE -Append
+				log "Verify network connectivity to $SYS from this system, then run this script again" | Tee-Object $LOGFILE -Append
+			}
+		}
+	log "Test connection to port 22 on target dr systems"
+	ForEach ($SYS in $TGTDRSYS) {
+		$TGTSYSSOCK = New-Object System.Net.Sockets.TcpClient("$SYS","22")
+			If ($TGTSYSSOCK.Connected) {
+				log "Port 22 on $SYS is open" | Tee-Object $LOGFILE -Append
+				$TGTSYSSOCK.Close()
+			} Else {
+				log "Could not connect to port 22 on $SYS" | Tee-Object $LOGFILE -Append
+				log "Verify network connectivity to $SYS from this system, then run this script again" | Tee-Object $LOGFILE -Append
+			}
+		}
+	log "Test Network Connectivity Phase Completed" | Tee-Object $LOGFILE -Append
+	
+	# Begin Execution Phase
+	log	"Begin Execution Phase" | Tee-Object $LOGFILE -Append
+	# print them to the screen for final validation?
+	$EXECARRAY = $CMDARRAY | Where-Object {$_.ExecutionOrder -ne $Null} | Sort-Object -Property ExecutionOrder
+	log "The following commands will be executed in order:" | Tee-Object $LOGFILE -Append
+	Write-Output "--------------------------------------------------------------------"
+	ForEach ($OBJ in $EXECARRAY) {
+		If ($($OBJ.CommandType) -match "^[p][r][d][A-Za-z]*$") {
+			log "Target System: $($OBJ.TargetSystem) Command: $($OBJ.CommandString)" | Tee-Object $LOGFILE -Append
+		}
+		If ($($OBJ.CommandType) -match "^[d][r][A-Za-z]*$") {
+			log "Target DR System:  $($OBJ.TargetDrSystem) Command: $($OBJ.CommandString)" | Tee-Object $LOGFILE -Append
+		}
+	}
+	Write-Output "--------------------------------------------------------------------"
+	Write-Output "Review the above commands for accuracy, we will attempt to execute them as is"
+	Pause
 
 }
 
 END {}
-#>
