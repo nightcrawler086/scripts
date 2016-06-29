@@ -165,7 +165,8 @@ PROCESS {
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdVdmCreate";
 				CommandHeading = "`r`n## VDM Creations Commands (PROD)`r`n";
-				CommandString = $CMDSTR
+				CommandString = $CMDSTR;
+				ExecutionOrder = "1"
 			}
 			# Generate Prod VDM Int Attach Commands
 			$CMDSTR = "nas_server -vdm $($OBJ.TargetVDM) -attach <INT_NAME>"
@@ -175,7 +176,8 @@ PROCESS {
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdVdmAttachInt";
 				CommandHeading = "`r`n## VDM Attach Interface Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "3"
 		}
 	}
 	#$SUBSET = $OBJARRAY | 
@@ -277,7 +279,8 @@ PROCESS {
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdIntCreate";
 			CommandHeading = "`r`n## Create Interface Commands (PROD)`r`n";
-			CommandString = "$CMDSTR"
+			CommandString = "$CMDSTR";
+			ExecutionOrder = "2"
 		}
 	}
 	$SUBSET = $OBJARRAY | 
@@ -307,7 +310,8 @@ PROCESS {
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdCifsCreate";
 			CommandHeading = "`r`n## Create CIFS Server Commands (PROD)`r`n";
-			CommandString = "$CMDSTR"
+			CommandString = "$CMDSTR";
+			ExecutionOrder = "7"
 		}
 		# Generate Prod Join CIFS Server Commands 
 		$CMDSTR = "server_cifs $($OBJ.TargetCifsServer) -Join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=<ADMIN_USER>,`"ou=Servers:ou=NAS:ou=INFRA`""
@@ -317,7 +321,8 @@ PROCESS {
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdCifsJoin";
 			CommandHeading = "`r`n## Join CIFS Server Commands (PROD)`r`n";
-			CommandString = "$CMDSTR"
+			CommandString = "$CMDSTR";
+			ExecutionOrder = "8"
 		}
 	}
 	$SUBSET = $OBJARRAY | 
@@ -408,7 +413,8 @@ PROCESS {
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdFsCreate";
 				CommandHeading = "`r`n## Filesystem Creation Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "4"
 			}
 		}
 		# Target Prod FS Dedupe Commands
@@ -453,7 +459,8 @@ PROCESS {
 				CommandType = "prdFsQtree";
 				CommandHeading = "`r`n## Filesystem Qtree Commands (PROD)`r`n";
 				CommandString = "$CMDSTR";
-				Comments = "Could not find valid Qtree name...using TargetFilesystem as Qtree name"
+				Comments = "Could not find valid Qtree name...using TargetFilesystem as Qtree name";
+				ExecutionOrder = "6"
 			}
 		} 
 		# FS Mount Commands
@@ -464,7 +471,8 @@ PROCESS {
 		    TargetDrSystem = $OBJ.TargetDrSystem;
 		    CommandType = "prdFsMnt";
 		    CommandHeading = "`r`n## Filesystem Mount Commands (PROD)`r`n";
-		    CommandString = "$CMDSTR"
+		    CommandString = "$CMDSTR";
+			ExecutionOrder = "5"
         }
 		# FS Export Commands
 		If ($($OBJ.TargetCifsServer) -notmatch "N/A" -and $($OBJ.TargetCifsServer) -ne "") {
@@ -475,7 +483,8 @@ PROCESS {
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdCifsExport";
 				CommandHeading = "`r`n## CIFS Export Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "9"
 			}
 		}
 		If ($($OBJ.TargetNfsServer) -notmatch "N/A" -and $($OBJ.TargetNfsServer) -ne "") {
@@ -486,7 +495,8 @@ PROCESS {
 				TargetDrSystem = $OBJ.TargetDrSystem;
 				CommandType = "prdNfsExport";
 				CommandHeading = "`r`n## NFS Export Commands (PROD)`r`n";
-				CommandString = "$CMDSTR"
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "10"
 			}
 		}
 		# FS Replication Commands
