@@ -189,6 +189,8 @@ PROCESS {
 	log	"Begin Execution Phase" | Tee-Object $LOGFILE -Append
 	# print them to the screen for final validation?
 	$EXECARRAY = $CMDARRAY | Where-Object {$_.ExecutionOrder -ne $Null} | Sort-Object -Property ExecutionOrder
+	$EXTGTSYS = $EXECARRAY | Select-Object -ExpandProperty TargetSystem -Unique
+	$EXTGTDRSYS = $EXECARRAY | Select-Object -ExpandProperty TargetDrSystem -Unique
 	log "The following commands will be executed in order:" | Tee-Object $LOGFILE -Append
 	Write-Output "--------------------------------------------------------------------"
 	ForEach ($OBJ in $EXECARRAY) {
@@ -202,6 +204,37 @@ PROCESS {
 	Write-Output "--------------------------------------------------------------------"
 	Write-Output "Review the above commands for accuracy, we will attempt to execute them as is"
 	Pause
+	# Being actual execution
+	# Logic (if possible)
+	#
+	# For each command type:
+	# run some sort of list command, and try to filter the output
+	# aka, check if a volume exists before trying to create it
+	log "Running commands against Target Systems" | Tee-Object $LOGFILE -Append
+	ForEach ($SYS in $EXTGTSYS) {
+		# Create our SSH session to communicate with the target system
+		$TGTSESID = New-SSHSession -ComputerName $SYS -Credential (Get-Credential -Message "Provide Credentials for $SYS")
+		# I think i need the TargetVdm to compare with for this to be necessary
+		#$VDMLIST = Invoke-SSHCommand -SessionId ($TGTSESID).SessionId -Command "nas_server -list -vdm" | 
+		#	Select-Object -ExpandProperty Output
+		$SUBSET = $EXECARRAY | 
+			Where-Object {$_.CommandType -eq "prdVdmCreate" -and $_.TargetSystem -eq "$SYS"}
+		ForEach ($CMD in $SUBSET) {
+			# need a way to check if VDM exists already, more properties in output file?
+			#If ($VDMLIST -notcontains )
+			If (($TGTSESID).Connected) {	
+				$EXEC = Invoke-SSHCommand -SessionId (TGTSESID).SessionId -Command "$($CMD.CommandString)"
+				$OUTOBJ = New-Object -TypeName PSObject
+				$OUTOBJ | Add-Member -MemberType NoteProperty -Name Command -Value $($CMD.CommandString)
+				$OUTOBJ | Add-Member -MemberType NoteProperty -Name TargetSystem -Value $($CMD.TargetSystem)
+				$OUTOBJ | Add-Member -MemberType NoteProperty -Name CommandType -Value $($CMD.CommandType)
+				$OUTOBJ | Add-Member -MemberType NoteProperty -Name ExitStatus -Value $($EXEC.ExitStatus)
+				$OUTOBJ | Add-Member -MemberType NoteProperty -Name CommandOutput -Value ($EXEC | Select-Object -ExpandProperty Output)
+			}
+		}
+		
+		
+	}
 
 }
 
