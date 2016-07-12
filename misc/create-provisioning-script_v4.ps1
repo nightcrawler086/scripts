@@ -299,7 +299,7 @@ PROCESS {
 		}
 	}
 	$SUBSET = $OBJARRAY | 
-		Where-Object {$_.TargetCifsServer -ne "" -or $_.TargetCifsServer -notmatch "N/A" -and $_.TargetProtocol -eq "CIFS" -or $_.TargetProtocol -eq "BOTH"} | 
+		Where-Object {$_.TargetCifsServer -ne "" -or $_.TargetCifsServer -notmatch "N/A"} | 
 			Sort-Object -Property TargetCifsServer -Unique
 	ForEach ($OBJ in $SUBSET) {
 		# Generate Prod Create CIFS Server Commands
@@ -314,7 +314,7 @@ PROCESS {
 			ExecutionOrder = "7"
 		}
 		# Generate Prod Join CIFS Server Commands 
-		$CMDSTR = "server_cifs $($OBJ.TargetCifsServer) -Join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=<ADMIN_USER>,`"ou=Servers:ou=NAS:ou=INFRA`""
+		$CMDSTR = "server_cifs $($OBJ.TargetCifsServer) -Join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=<ADMIN_USER>,ou=`"ou=Servers:ou=NAS:ou=INFRA`""
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
