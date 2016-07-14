@@ -80,11 +80,55 @@ else:
 #print(newdf.TargetSystem)
 # This works for sorting rows by multiple values
 # Just need to populate the values programatically 
-uniq = sheetrn[(sheetrn['SourceSystem']=='nastam02cs0')]
-multi_uniq = sheetrn[(sheetrn['SourceSystem']=='nastam02cs0') & (sheetrn['TargetSystem']=='tamctinasv5151x')]
-print (len(uniq.index))
-print (len(multi_uniq.index))
+#uniq = sheetrn[(sheetrn['SourceSystem']=='nastam02cs0')]
+#multi_uniq = sheetrn[(sheetrn['SourceSystem']=='nastam02cs0') & (sheetrn['TargetSystem']=='tamctinasv5151x')]
+#print (len(uniq.index))
+#print (len(multi_uniq.index))
 
+# This doesn't actually work like I thought..only unique for one column
+#uniq = pd.unique(sheetrn[['SourceSystem', 'TargetSystem']].values.ravel())
+#print(uniq)
+
+#print(tgtsys)
+
+
+# This works for replacing 'N/A' values with None
+# This is iterating through all cells
+for cell in sheetrn.columns.values:
+    sheetrn[cell] = sheetrn[cell].replace('N/A', 'None')
+# This works for replace null values with None
+sheetrn = sheetrn.where((pd.notnull(sheetrn)), None)
+
+
+tgtsys = list(set(sheetrn.TargetSystem))
+
+output = []
+
+for sys in tgtsys:
+    subset = sheetrn[(sheetrn['TargetSystem']==sys)]
+    uniq_subset = subset.drop_duplicates(subset=['TargetVdm'])
+    for index, row in uniq_subset.iterrows():
+        if (row.TargetVdm != None and \
+            row.TargetDm != None and \
+            row.TargetStoragePool != None):
+             cmdstr = "nas_server -name %s -type vdm %s -setstate loaded pool=%s" % (row.TargetVdm, row.TargetDm, row.TargetStoragePool)
+             output.append({'SourceSystem': row.SourceSystem, 
+                        'TargetSystem': row.TargetSystem, 
+                        'CommandType': 'prdVdmCreate', 
+                        'CommandString': cmdstr})
+        if (row.TargetDm != None and \
+            row.TargetIp != None):
+             cmdstr = "server_ifconfig %s -create -Device fsn0 -name <INT_NAME> -protocol IP %s <MASK> <BROADCAST>" % (row.TargetDm, row.TargetIp)
+             output.append({'SourceSystem': row.SourceSystem, 
+                        'TargetSystem': row.TargetSystem, 
+                        'CommandType': 'prdIntCreate', 
+                        'CommandString': cmdstr})
+        print(output)
+    #uniqsrc = list(set(row.SourceSystem))
+    #print(uniqsrc, sys)
+#print(sheetrn)
 # test some json output
 # This works
 #sheetrn.to_json('test.json')
+
+
