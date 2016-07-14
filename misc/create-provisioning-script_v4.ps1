@@ -186,7 +186,7 @@ PROCESS {
 	$SUBSET = $OBJARRAY | Sort-Object TargetVdm,TargetDrSystem -Unique
 	ForEach ($OBJ in $SUBSET) {
 			# Generate PROD VDM Replication Commands
-			$CMDSTR = "nas_replicate -create $($OBJ.TargetVDM)_REP -source -vdm $($OBJ.TargetVDM) -destination -pool id=<POOL_ID> -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
+			$CMDSTR = "nas_replicate -create $($OBJ.TargetVDM)_REP -source -vdm $($OBJ.TargetVDM) -destination -pool id=<DST_POOL_ID> -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -227,7 +227,7 @@ PROCESS {
 			$TGTDRDMNUM = "<TGT_DR_DM_NUM>"
 		}
 		# Create Replication Passphrase on Source System
-		$CMDSTR = "nas_cel -create $($OBJ.TargetSystem) -ip <REP_IP> -passphrase <REP_PASS>"
+		$CMDSTR = "nas_cel -create $($OBJ.TargetDrSystem) -ip <DR_CS_IP> -passphrase nasadmin"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -237,7 +237,7 @@ PROCESS {
 			CommandString = "$CMDSTR"
 		}
 		# Create Replication Passphrase on Destination System
-		$CMDSTR = "nas_cel -create $($OBJ.TargetDrSystem) -ip <REP_IP> -passphrase <REP_PASS>"
+		$CMDSTR = "nas_cel -create $($OBJ.TargetSystem) -ip <PRD_CS_IP> -passphrase nasadmin"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -247,23 +247,23 @@ PROCESS {
 			CommandString = "$CMDSTR"
 		}
 		# Create Replication Interconnect on Prod System
-		$CMDSTR = "nas_cel -interconnect -create $TGTLOC`_dm$TGTDMNUM`-$TGTDRLOC`_dm$TGTDRDMNUM -source_server $TGTDM -destination_system $TGTDRSYS -destination_server $TGTDRDM -source_interfaces ip=<REP_IP> -destination_interfaces ip=<REP_IP>"
+		$CMDSTR = "nas_cel -interconnect -create $TGTLOC`_dm$TGTDMNUM`-$TGTDRLOC`_dm$TGTDRDMNUM -source_server $TGTDM -destination_system $TGTDRSYS -destination_server $TGTDRDM -source_interfaces ip=<PRD_REP_INT> -destination_interfaces ip=<DR_REP_INT>"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdCreateInterconnect";
-			CommandHeading = "`r`n## Create Replication Interconnect Commands (PROD)`r`n";
+			CommandHeading = "`r`n## Create Datamover Interconnection Commands (PROD)`r`n";
 			CommandString = "$CMDSTR"
 		}
 		# Create Replication Interconnect on Cob(DR) System
-		$CMDSTR = "nas_cel -interconnect -create $TGTDRLOC`_dm$TGTDRDMNUM`-$TGTLOC`_dm$TGTDMNUM -source_server $TGTDRDM -destination_system $TGTSYS -destination_server $TGTDM -source_interfaces ip=<REP_IP> -destination_interfaces ip=<REP_IP>"
+		$CMDSTR = "nas_cel -interconnect -create $TGTDRLOC`_dm$TGTDRDMNUM`-$TGTLOC`_dm$TGTDMNUM -source_server $TGTDRDM -destination_system $TGTSYS -destination_server $TGTDM -source_interfaces ip=<DR_REP_IP> -destination_interfaces ip=<PRD_REP_INT>"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "drCreateInterconnect";
-			CommandHeading = "`r`n## Create Replication Interconnect Commands (DR)`r`n";
+			CommandHeading = "`r`n## Create Datamover Interconnection Commands (DR)`r`n";
 			CommandString = "$CMDSTR"
 		}
 	}
