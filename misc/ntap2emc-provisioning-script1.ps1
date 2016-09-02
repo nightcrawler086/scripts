@@ -14,9 +14,9 @@ Param (
 BEGIN {
 
 	If ($OutFormat -eq "") {
-		Write-Host "No output format specified..."
-		Write-Host "All output will be written to the console unless you specify and format"
-		Write-Host "Enter a format, or none to send all output to the console"
+		Write-Host -ForegroundColor Yellow "No output format specified..."
+		Write-Host -ForegroundColor Yellow "All output will be written to the console unless you specify and format"
+		Write-Host -ForegroundColor Yellow "Enter a format, or none to send all output to the console"
 		$RESPONSE = Read-Host '(txt/csv/json/none)'
 		If ($RESPONSE -eq $NULL -or $RESPONSE -eq "none") {
 			$OutFormat = ""
