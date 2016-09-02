@@ -23,28 +23,13 @@ print ("Output format: %s" % args.out_format)
 print ("Source system: %s" % args.source_system)
 print ("File Extension: %s" % input_file_ext)
 
-# Don't need this anymore...just needed xlrd module
-# Try to detect file encoding
-#def test_encoding(testfile):
-#    detector = UniversalDetector()
-#    with open(testfile, 'rb') as f:
-#        for line in f:
-#            detector.feed(line)
-#            if detector.done:
-#                break
-#            detector.close()
-#        r = detector.result
-#        print "Detected encoding %s with confidence %s" % (r['encoding'], r['confidence'])
-#
-#test_encoding(testfile)
-
 # Import modules that we need based on input file 
 if input_file_ext == '.xlsx':
-    print "Detected Excel input file"
+    print("Detected Excel input file")
     xlsx = pd.ExcelFile(args.input_file)
     sheet = pd.read_excel(xlsx, sheetname='Remote_Sites_Mapping')
     # This really isn't necessary, just cleaner for output
-    sheetrn = sheet.rename(columns={'PROD Location': 'SourceLocation', 
+    rename_columns = sheet.rename(columns={'PROD Location': 'SourceLocation', 
         'Source Prod Box': 'SourceSystem', 'Source COB Location': 'SourceDrLocation', 
         'Source COB Box': 'SourceDrSystem', 'Source Filesystem': 'SourceFilesystem',
         'Source Qtree/Directory': 'SourceQtree', 'Source PROD Capacity (GB)': 'SourceCapacityGB',
@@ -66,7 +51,7 @@ if input_file_ext == '.xlsx':
         'VPN request(it should be done by SA based on new prod IP and COB IP)YES/NO': 'VPN',
         'New Tape Policy Name Required': 'NewTapePolicy', 'Comments': 'Comments'})
 elif input_file_ext == '.csv':
-    print "Detected CSV input file"
+    print("Detected CSV input file")
     csv_file = pd.read_csv(args.input_file)
     # All these work:
     #print(csv_file.SourceSystem)
