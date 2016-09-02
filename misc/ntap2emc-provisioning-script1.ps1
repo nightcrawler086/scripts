@@ -15,8 +15,7 @@ BEGIN {
 
 	If ($OutFormat -eq "") {
 		Write-Host "No output format specified..."
-		Write-Host "All output will be written to the console unless"
-		Write-Host "you specify and format (txt/csv/json)"
+		Write-Host "All output will be written to the console unless you specify and format"
 		Write-Host "Enter a format, or none to send all output to the console"
 		$RESPONSE = Read-Host '(txt/csv/json/none)'
 		If ($RESPONSE -eq $NULL -or $RESPONSE -eq "none") {
@@ -190,7 +189,7 @@ PROCESS {
 		$TGTFRAMENUM = $TGTFRAME.Substring(10,4)
 		$TGTDM = $($OBJ.TargetDm)
 		$TGTDMNUM = $TGTDM.Substring(7)
-		$CMDSTR = "server_ifconfig $($OBJ.TargetDm) -create -Device fsn0 -name ${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}C01"
+		$CMDSTR = "server_ifconfig $($OBJ.TargetDm) -create -Device fsn0 -name ${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}C0#"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -199,10 +198,10 @@ PROCESS {
 			CommandHeading = "`r`n## Create Interface Commands $($OBJ.TargetSystem)`r`n";
 			CommandString = "$CMDSTR"
 			ExecutionOrder = "02";
-			Comments = "`r`n**The interface name should be in ALL CAPS, if not correct it before running the command**`r`n"
+			Comments = "`r`n**The interface name should be in ALL CAPS, if not correct it before running the command**`r`n**Replace the trailing '#' with the interface number**`r`n"
 		}
 		# Generate Prod VDM Int Attach Commands
-		$CMDSTR = "nas_server -vdm $($OBJ.TargetVDM) -attach ${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}C01"
+		$CMDSTR = "nas_server -vdm $($OBJ.TargetVDM) -attach ${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}C0#"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -211,7 +210,7 @@ PROCESS {
 			CommandHeading = "`r`n## VDM Attach Interface Commands $($OBJ.TargetSystem)`r`n";
 			CommandString = "$CMDSTR";
 			ExecutionOrder = "03";
-			Comments = "`r`n**Double-check the interface name for accuracy**`r`n"
+			Comments = "`r`n**Double-check the interface name for accuracy**`r`n**Replace the trailing '#' with the interface number**`r`n"
 		}
 	}
 	$SLICE = $OBJARRAY | Sort-Object TargetSystem,TargetDrSystem -Unique
@@ -487,11 +486,11 @@ END {
 		CSV {
 			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
 			New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts" -ItemType directory | Out-Null
-			$ALLTGTSYS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
-			ForEach ($TGTSYS in $ALLTGTSYS) {
-				New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts\$($TGTSYS.SourceSystem)" -ItemType directory -Force | Out-Null
-				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$($TGTSYS.TargetSystem)"} 
-				$ALLCMDS | Export-Csv -NoTypeInformation -Path ".\${TIMESTAMP}_provisioning-scripts\$($TGTSYS.SourceSystem)\$($TGTSYS.TargetSystem)-$($TGTSYS.TargetDrSystem).csv"
+			$ALLSRCSYS = $OUTPUT | Sort-Object -Property SourceSystem -Unique
+			ForEach ($SRCSYS in $ALLSRCSYS) {
+				New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts\$($SRCSYS.SourceSystem)" -ItemType directory -Force | Out-Null
+				$ALLCMDS = $OUTPUT | Where-Object {$_.SourceSystem -eq "$($SRCSYS.SourceSystem)"} 
+				$ALLCMDS | Export-Csv -NoTypeInformation -Path ".\${TIMESTAMP}_provisioning-scripts\$($SRCSYS.SourceSystem)\$($SRCSYS.TargetSystem)-$($SRCSYS.TargetDrSystem).csv"
 			}
 		} 
 		JSON {
