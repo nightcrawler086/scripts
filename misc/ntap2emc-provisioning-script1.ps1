@@ -394,7 +394,7 @@ PROCESS {
 			ExecutionOrder = "21";
 			Comments = "`r`n**Only run these commands after initial base copy has been completed**`r`n**Replace the <DATE> with the date which the command is executed**`n"
 		}
-		$CMDSTR = "nas_ckpt_schedule -create $($OBJ.TargetVolume)`_DAILY_SCHED -filesystem $($OBJ.TargetVolume) -description ""1710hrs daily checkpoint schedule for $($OBJ.TargetVolume)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:10 -keep 7"
+		$CMDSTR = "nas_ckpt_schedule -create $($OBJ.TargetVolume)`_DAILY_SCHED -filesystem $($OBJ.TargetVolume) -description ""1710hrs daily checkpoint schedule for $($OBJ.TargetVolume)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:10 -ckpt_name $($OBJ.TargetVolume)_ckpt_backup"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
