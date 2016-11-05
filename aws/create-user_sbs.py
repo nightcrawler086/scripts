@@ -40,15 +40,21 @@ for index, row in csv.iterrows():
     user_names.append(user_name)
 
 # Empty list to store responses
-responses = []
+responses = {}
 
 # Loop through the usernames we've created and create the 
-# user account in AWS
-
+# user account in AWS and add the users to the proper groups
+print("Creating users...")
 for user in user_names:
     #print(user)
-    response = client.create_user(UserName=user)
+    response = client.create_user(
+            UserName=user
+    )
     responses.append(response)
+    grp_rspnse = client.add_user_to_group(
+            GroupName='NoBilling',
+            UserName=user
+    )
 
-print(responses)
-
+print("Performing validation...")
+# Loop through responses, validate status codes
