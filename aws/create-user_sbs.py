@@ -27,6 +27,7 @@ else:
     print("Expected a CSV file, exiting...")
     quit()
 
+# This is how to print columns from the same row
 #for index, row in csv.iterrows():
 #    print row['FirstName'], row['LastName']
 
