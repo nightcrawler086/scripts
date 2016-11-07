@@ -13,7 +13,9 @@ client = boto3.client('iam')
 # Add argument for username list
 parser = argparse.ArgumentParser(description='Create AWS Users from input file')
 parser.add_argument('-i','--input-file',help='input file',required=True)
+# Check if group is empty
 parser.add_argument('-g','--group',help='group to add users to',required=False)
+# Check if empty, then parse list of usernames
 parser.add_argument('-u','--users',help='list of usernames',required=False)
 args = parser.parse_args()
 
