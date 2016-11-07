@@ -6,11 +6,15 @@ import argparse
 
 __author__ = 'nightcrawler'
 
+# Define our IAM client to talk to the API
 client = boto3.client('iam')
 
 # Define arguments
+# Add argument for username list
 parser = argparse.ArgumentParser(description='Create AWS Users from input file')
 parser.add_argument('-i','--input-file',help='input file',required=True)
+parser.add_argument('-g','--group',help='group to add users to',required=False)
+parser.add_argument('-u','--users',help='list of usernames',required=False)
 args = parser.parse_args()
 
 # Get file extension to detect input file type
@@ -31,7 +35,7 @@ user_names = []
 
 # Loop through the rows in the data frame
 # First character of the field labeled 'FirstName' plus
-# the field labeld 'LastName' equals the user_name
+# the field labeled 'LastName' equals the user_name
 # Then add to our empty list above
 for index, row in csv.iterrows():
     first_init = row['FirstName'][:1]
@@ -46,15 +50,17 @@ responses = {}
 # user account in AWS and add the users to the proper groups
 print("Creating users...")
 for user in user_names:
-    #print(user)
+    # Make these into simple functions
     response = client.create_user(
             UserName=user
     )
+    # Make these into simple functions
     responses.append(response)
     grp_rspnse = client.add_user_to_group(
             GroupName='NoBilling',
             UserName=user
     )
 
-print("Performing validation...")
+# Add code to validate HTML status codes
+#print("Performing validation...")
 # Loop through responses, validate status codes
