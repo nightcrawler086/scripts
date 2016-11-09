@@ -31,7 +31,7 @@ else:
 #    print row['FirstName'], row['LastName']
 
 # Empty list to fill with usernames
-user_names = []
+new_users = []
 
 # Loop through the rows in the data frame
 # First character of the field labeled 'FirstName' plus
@@ -41,7 +41,15 @@ for index, row in csv.iterrows():
     first_init = row['FirstName'][:1]
     last_name = row['LastName']
     user_name = first_init.lower() + last_name.lower()
-    user_names.append(user_name)
+    new_users.append(user_name)
+
+# Get current users, so we don't create duplicates
+current_users = []
+
+eusers = client.list_users()
+for euser in eusers.get('Users', []):
+    euname = euser['UserName']
+    current_users.append(euname)
 
 # Empty list to store responses
 responses = {}
@@ -49,18 +57,23 @@ responses = {}
 # Loop through the usernames we've created and create the 
 # user account in AWS and add the users to the proper groups
 print("Creating users...")
-for user in user_names:
-    # Make these into simple functions
-    response = client.create_user(
+for user in new_users:
+    # Check if user exists 
+    if user in current_users:
+        print("%r already exists") % user
+    else:
+        # If not, create the user
+        response = client.create_user(
             UserName=user
-    )
-    # Make these into simple functions
-    responses.append(response)
-    grp_rspnse = client.add_user_to_group(
+        )
+        # Save response
+        responses.append(response)
+        # Add user to group
+        grp_rspnse = client.add_user_to_group(
             GroupName='NoBilling',
             UserName=user
-    )
+        )
 
-# Add code to validate HTML status codes
-#print("Performing validation...")
-# Loop through responses, validate status codes
+# all the code above works.
+# want to add validation step (response code 200?)
+# and add argument to take list of users to create
