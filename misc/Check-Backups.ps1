@@ -1,7 +1,10 @@
 [CmdletBinding()]
 Param (
-	[Parameter(Mandatory=$True,Position=1)]
-	 [string]$File
+	[Parameter(Mandatory=$False,Position=1)]
+	 [string]$File,
+
+	[Parameter(Mandatory=$False,Position=2)]
+	 [string[]]$VolumeList
 )
 
 BEGIN {
@@ -11,12 +14,23 @@ BEGIN {
 	}
 	If (!(Get-Module BitsTransfer)) {
 		Write-Host "Need BitsTransfer Module..."
-		Exit
+		Exit 1
 	}
 
-	$VOLUMES = Import-Csv $File
+	If ($File) {
+		$VOLUMES = Import-Csv $File
+	} 
+    ElseIf ($VolumeList) {
+		$VOLUMES = $VolumeList
+        $VOLUMES = $VOLUMES.Split(",")
+	} 
+    Else { 
+        Echo "No input specified..."
+        Echo "You must specify an input file or volume list"
+        Exit 1 
+    }
 
-	$URL = "https://bravura.nam.nsroot.net/clientlist.csv"
+	$URL = "http://bravura.nam.nsroot.net/clientlist.csv"
 
 }
 
@@ -30,15 +44,31 @@ PROCESS {
 	Write-Host "Checking for matching backups..."
 
 	ForEach ($VOL in $VOLUMES) {
-		$POLICY = $BACKUPS | Where-Object {$_.'Policy Name' -like "*$($VOL.Volume)*"}
-		If (!$POLICY) { 
-			Write-Host -ForegroundColor Red "$($VOL.Volume) does not have a backup policy"
-		}
-		If ($POLICY) {
-			Write-Host "$($VOL.Volume) is backed up with:  $POLICY"
-		}
+        If ((Get-Member -Name Volume -InputObject $VOLUMES)) {
+		    $POLICY = $BACKUPS | Where-Object {$_.'Policy Name' -like "*$($VOL.Volume)*"}
+            If (!$POLICY) { 
+			    Write-Host -ForegroundColor Red "$($VOL.Volume) does not have a backup policy"
+		    }
+		    If ($POLICY) {
+			    Write-Host "$($VOL.Volume) is backed up with:  $($POLICY.'Policy Name')"
+		    }
+        } 
+        Else {
+            $POLICY = $BACKUPS | Where-Object {$_.'Policy Name' -like "*$VOL*"}
+            If (!$POLICY) { 
+		        Write-Host -ForegroundColor Red "$VOL does not have a backup policy"
+	        }
+	        If ($POLICY) {
+		        Write-Host "$VOL is backed up with:  $($POLICY.'Policy Name')"
+	        }
+        }
 	}
 }
 
 END{
+
+Write-Host "Cleaning up..."
+Remove-Item -Path .\clientlist.csv
+Write-Host "Done."
+
 }
