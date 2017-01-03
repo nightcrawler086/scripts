@@ -44,7 +44,7 @@ PROCESS {
 	Write-Host "Checking for matching backups..."
 
 	ForEach ($VOL in $VOLUMES) {
-        If ((Get-Member -Name Volume -InputObject $VOLUMES)) {
+        If ((Get-Member -Name Volume -InputObject $VOL)) {
 		    $POLICY = $BACKUPS | Where-Object {$_.'Policy Name' -like "*$($VOL.Volume)*"}
             If (!$POLICY) { 
 			    Write-Host -ForegroundColor Red "$($VOL.Volume) does not have a backup policy"
