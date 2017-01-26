@@ -406,7 +406,7 @@ PROCESS {
 	ForEach ($OBJ in $SUBSET) {
 		If ($($OBJ.SecurityStyle) -ne "" -or $($OBJ.SecurityStyle) -notmatch "N/A" -and $($OBJ.SourceCapacityGB) -ne "" -or $($OBJ.SourceCapacityGB) -notmatch "N/A" -and $($OBJ.TargetStroagePool) -ne "" -or $($OBJ.TargetStoragePool) -notmatch "N/A") {
 			# Target Prod FS Create Commands
-			$CMDSTR = "nas_fs -name $($OBJ.SourceFilesystem) -type $($OBJ.SecurityStyle) -create size=$($OBJ.SourceCapacityGB)GB pool=$($OBJ.TargetStoragePool) -option slice=y"
+			$CMDSTR = "nas_fs -name $($OBJ.SourceFilesystem) -create samesize=$($OBJ.SourceFilesystem):cel=$($OBJ.SourceSystem) pool=$($OBJ.TargetStoragePool)"
 			$OUTPUT += New-Object -TypeName PSObject -Property @{
 				SourceSystem = $OBJ.SourceSystem;
 				TargetSystem = $OBJ.TargetSystem;
@@ -515,7 +515,7 @@ PROCESS {
 	$SUBSET = $OBJARRAY | Where-Object {$_.TargetDrSystem -ne "" -and $_.TargetDrSystem -notmatch "N/A" -and $_.TargetDrFilesystem -ne "" -and $_.TargetDrFilesystem -notmatch "N/A"}
 	ForEach ($OBJ in $SUBSET) {
 		# Cob (DR) FS Creation Commands
-		$CMDSTR = "nas_fs -name $($OBJ.TargetDrFilesystem) -create samesize:$($OBJ.SourceFilesystem):cel:$($OBJ.TargetDrSystem) pool:$($OBJ.TargetDrStoragePool)" 
+		$CMDSTR = "nas_fs -name $($OBJ.TargetDrFilesystem) -create samesize:$($OBJ.SourceFilesystem):cel:$($OBJ.TargetSystem) pool:$($OBJ.TargetDrStoragePool)" 
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
