@@ -12,12 +12,14 @@ Param (
 
 BEGIN {
 
-	If (!(Get-Module BitsTransfer)) {
-		Import-Module BitsTransfer
-	}
-	If (!(Get-Module BitsTransfer)) {
-		Write-Host "Need BitsTransfer Module..."
-		Exit 1
+	If (!$ClientList) {
+		If (!(Get-Module BitsTransfer)) {
+			Import-Module BitsTransfer
+		}
+		If (!(Get-Module BitsTransfer)) {
+			Write-Host "Need BitsTransfer Module..."
+			Exit 1
+		}
 	}
 
     If ($VolumeList) {
