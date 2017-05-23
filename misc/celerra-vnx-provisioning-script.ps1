@@ -116,14 +116,14 @@ BEGIN {
 		@{Name='SourceDrSystem';Expression={$_.'COB Filer'}},
 		@{Name='SourceDrVdm';Expression={$_.'COB Virtual Data Mover'}},
 		@{Name='SourceDrVolume';Expression={$_.'COB Volume'}},
-		@{Name='TechRefresh';Expression={$_.'Tech Refresh'}},
+		#@{Name='TechRefresh';Expression={$_.'Tech Refresh'}},
 		@{Name='TargetSystem';Expression={$_.'Target Prod VNX Frame'}},
 		@{Name='TargetDm';Expression={$_.'Target Prod Physical DataMover'}},
 		@{Name='TargetVdm';Expression={$_.'Target Virtual DataMover'}},
 		@{Name='TargetVdmRootDir';Expression={$_.'Root VDM Directory'}},
 		@{Name='TargetQipEntry';Expression={$_.'Prod QIP Entry'}},
 		@{Name='TargetIp';Expression={$_.'Prod IP'}},
-		@{Name='TargetInterface';Expression={$_.'Interface Name'}},
+		#@{Name='TargetInterface';Expression={$_.'Interface Name'}},
 		@{Name='TargetCifsServer';Expression={$_.'Target Cifs server Name'}},
 		@{Name='TargetNfsServer';Expression={$_.'Target NFS server Name'}},
 		@{Name='3dnsCname';Expression={$_.'3 DNS cname entry'}},
@@ -166,55 +166,52 @@ PROCESS {
 	$SLICE = $INFILE | Where-Object {$_.TargetVdm -ne "None"} | Sort-Object -Property TargetVdm -Unique
 	ForEach ($OBJ in $SLICE) {
 		# Target VDM Creation Commands
-		$PRDVDMCREATE = "nas_server -name $($OBJ.TargetVDM) -type vdm -create $($OBJ.TargetDM) -setstate loaded pool=$($OBJ.TargetStoragePool)"
+		$PRDVDMCREATE = "nas_server -name $($OBJ.TargetVdm) -type vdm -create $($OBJ.TargetDM) -setstate loaded pool=$($OBJ.TargetStoragePool)"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdVdmCreate";
-			CommandHeading = "`r`n## VDM Creations Commands $($OBJ.TargetSystem)`r`n";
+			CommandHeading = "`r`n## VDM Creations Commands __$($OBJ.TargetSystem)__`r`n";
 			CommandString = $PRDVDMCREATE;
 			ExecutionOrder = "01"
 		}
 	}
-	##########################################
-	# Start back here with the $SLICE command#
-	##########################################
 	$SLICE = $INFILE | Where-Object {$_.TargetDm -ne "None"} | Sort-Object -Property TargetVdm,TargetIp -Unique
 	ForEach ($OBJ in $SLICE) {
-		$TGTLOC = $($OBJ.ProdLocation)
-		$TGTLOCSUB = $TGTLOC.Substring(0,3)
 		$TGTSYS = $($OBJ.TargetSystem)
+		$TGTLOCSUB = $TGTSYS.Substring(0,3).ToUpper()
 		$TGTFRAME = $TGTSYS.Substring(0,$TGTSYS.Length-1)
 		$TGTFRAMENUM = $TGTFRAME.Substring(10,4)
 		$TGTDM = $($OBJ.TargetDm)
 		$TGTDMNUM = $TGTDM.Substring(7)
+		$PRDINT = "${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}C0#"
 		# Prod Interface Creation Commands
-		$PRDINTCREATE = "server_ifconfig $($OBJ.TargetDm) -create -Device fsn0 -name ${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}C0#"
+		$PRDINTCREATE = "server_ifconfig $($OBJ.TargetDm) -create -Device fsn0 -name $PRDINT -Protocol IP $($OBJ.TargetIp) <MASK> <BROADCAST>"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdIntCreate";
-			CommandHeading = "`r`n## Create Interface Commands $($OBJ.TargetSystem)`r`n";
+			CommandHeading = "`r`n## Create Interface Commands __$($OBJ.TargetSystem)__`r`n";
 			CommandString = "$PRDINTCREATE"
 			ExecutionOrder = "02";
-			Comments = "`r`n**The interface name should be in ALL CAPS, if not correct it before running the command**`r`n**Replace the trailing '#' with the interface number**`r`n"
+			Comments = "`r`n**Replace the trailing '#' in the interface name with the interface number**`r`n"
 		}
 		# Generate Prod VDM Int Attach Commands
-		$PRDVDMINTATT = "nas_server -vdm $($OBJ.TargetVDM) -attach ${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}C0#"
+		$PRDVDMINTATT = "nas_server -vdm $($OBJ.TargetVDM) -attach $PRDINT"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdVdmAttachInt";
-			CommandHeading = "`r`n## VDM Attach Interface Commands $($OBJ.TargetSystem)`r`n";
+			CommandHeading = "`r`n## VDM Attach Interface Commands __$($OBJ.TargetSystem)__`r`n";
 			CommandString = "$PRDVDMINTATT";
 			ExecutionOrder = "03";
 			Comments = "`r`n**Double-check the interface name for accuracy**`r`n**Replace the trailing '#' with the interface number**`r`n"
 		}
 	}
-	$SLICE = $INFILE | Sort-Object TargetSystem,TargetDrSystem -Unique
+	$SLICE = $INFILE | Where-Object {$_.TargetSystem -ne "None"} | Sort-Object TargetSystem,TargetDrSystem -Unique
 	ForEach ($OBJ in $SLICE) {
 		# Create Replication Passphrase on Source System
 		$PRDCELCREATE = "nas_cel -create $($OBJ.TargetDrSystem) -ip <COB_CS_IP> -passphrase nasadmin"
@@ -223,7 +220,7 @@ PROCESS {
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdRepPass";
-			CommandHeading = "`r`n## Create Replication Passphrase Commands $($OBJ.TargetSystem)`r`n";
+			CommandHeading = "`r`n## Create Replication Passphrase Commands __$($OBJ.TargetSystem)__`r`n";
 			CommandString = "$PRDCELCREATE"
 			ExecutionOrder = "04";
 			Comments = "`r`n**Replace the <COB_CS_IP> with the Control Station IP from the COB system**`r`n"
@@ -235,85 +232,125 @@ PROCESS {
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "drRepPass";
-			CommandHeading = "`r`n## Create Replication Passphrase Commands $($OBJ.TargetDrSystem)`r`n";
+			CommandHeading = "`r`n## Create Replication Passphrase Commands __$($OBJ.TargetDrSystem)__`r`n";
 			CommandString = "$DRCELCREATE"
 			ExecutionOrder = "05";
 			Comments = "`r`n**Replace the <TGT_CS_IP> with the Control Station IP from the PROD system**`r`n"
 		}
-		# Create Replication Interconnect on Prod System
-		$PRDINCCREATE = "nas_cel -interconnect -create <TGT_DM#-COB_DM#> -source_server $($OBJ.TargetDm) -destination_system $($OBJ.TargetDrSystem) -destination_server <COB_DM> -source_interfaces ip=<TGT_REP_IP> -destination_interfaces ip=<COB_REP_IP>"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "prdCreateInterconnect";
-			CommandHeading = "`r`n## Create Datamover Interconnection Commands $($OBJ.TargetSystem)`r`n";
-			CommandString = "$PRDINCCREATE"
-			ExecutionOrder = "06";
-			Comments = "`r`n**Replace all values in <> with their proper values**`r`n"
-		}
-		# Create Replication Interconnect on Cob(DR) System
-		$DRINCCREATE = "nas_cel -interconnect -create <COB_DM#-TGT_DM#> -source_server <COB_DM> -destination_system $($OBJ.TargetSystem) -destination_server $($OBJ.TargetDm) -source_interfaces ip=<COB_REP_IP> -destination_interfaces ip=<TGT_REP_INT>"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "drCreateInterconnect";
-			CommandHeading = "`r`n## Create Datamover Interconnection Commands $($OBJ.TargetDrSystem)`r`n";
-			CommandString = "$DRINCCREATE"
-			ExecutionOrder = "07";
-			Comments = "`r`n**Replace all values in <> with their proper values**`r`n"
-		}
-		# Generate PROD VDM Replication Commands
-		$PRDVDMREP = "nas_replicate -create $($OBJ.TargetVDM)_REP -source -vdm $($OBJ.TargetVDM) -destination -pool id=<COB_POOL_ID> -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "prdVdmRep";
-			CommandHeading = "`r`n## VDM Replication Commands $($OBJ.TargetSystem)`r`n";
-			CommandString = "$PRDVDMREP";
-			ExecutionOrder = "08";
-			Comments = "`r`n**Replace the all values in <> with their proper values**`r`n"
-		}
 		# Generate Cob(DR) Interface Configuration Commands
-		$DRINTCREATE = "server_ifconfig <COB_DM> -create -Device fsn0 -name <COB_INT_NAME> -protocol IP $($OBJ.TargetDrIp) <MASK> <BROADCAST>" 		
+		$TGTDRSYS = $($OBJ.TargetDrSystem)
+		$TGTDRLOCSUB = $TGTDRSYS.Substring(0,3).ToUpper()
+		$TGTDRFRAME = $TGTDRSYS.Substring(0,$TGTDRSYS.Length-1)
+		$TGTDRFRAMENUM = $TGTDRFRAME.Substring(10,4)
+		$TGTDRDM = $($OBJ.TargetDrDm)
+		$TGTDRDMNUM = $TGTDRDM.Substring(7)
+		$DRINT = "${TGTDRLOCSUB}${TGTDRFRAMENUM}DM${TGTDRDMNUM}C0#"
+		$DRINTCREATE = "server_ifconfig $($OBJ.TargetDrDm) -create -Device fsn0 -name $DRINT -protocol IP $($OBJ.TargetDrIp) <MASK> <BROADCAST>" 		
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "drIntCreate";
-			CommandHeading = "`r`n## Create Interface Commands $($OBJ.TargetDrSystem)`r`n";
+			CommandHeading = "`r`n## Create Interface Commands __$($OBJ.TargetDrSystem)__`r`n";
 			CommandString = "$DRINTCREATE";
 			ExecutionOrder = "09";
-			Comments = "`r`n**Replace all values in <>.  The MASK and BROADCAST can be found from the similar interface on the system**`r`n"
+			Comments = "`r`n**The <MASK> and <BROADCAST> can be found from the similar interface on the system**`r`n**Replace the trailing '#' in the interface name with the proper interface number**`r`n"
+		}
+	}
+	$SLICE = $INFILE | Where-Object {$_.TargetSystem -ne "None"} | Sort-Object TargetSystem,TargetDrSystem,TargetDm,TargetDrDm -Unique
+	ForEach ($OBJ in $SLICE) {
+		$TGTSYS = $($OBJ.TargetSystem)
+		$TGTLOCSUB = $TGTSYS.Substring(0,3).ToUpper()
+		$TGTDRSYS = $($OBJ.TargetDrSystem)
+		$TGTDRLOCSUB = $TGTDRSYS.Substring(0,3).ToUpper()
+		$TGTFRAME = $TGTSYS.Substring(0,$TGTSYS.Length-1)
+		$TGTFRAMENUM = $TGTFRAME.Substring(10,4)
+		$TGTDM = $($OBJ.TargetDm)
+		$TGTDMNUM = $TGTDM.Substring(7)
+		$TGTDRDM = $($OBJ.TargetDrDm)
+		$TGTDRDMNUM = $TGTDRDM.Substring(7)
+		$PRDINCNAME = "${TGTLOCSUB}-DM${TGTDMNUM}_${TGTDRLOCSUB}-DM${TGTDRDMNUM}"
+		$DRINCNAME = "${TGTDRLOCSUB}-DM${TGTDRDMNUM}_${TGTLOCSUB}-DM${TGTDMNUM}"
+		# Create Replication Interconnect on Prod System
+		$PRDINCCREATE = "nas_cel -interconnect -create $PRDINCNAME -source_server $($OBJ.TargetDm) -destination_system $($OBJ.TargetDrSystem) -destination_server $($OBJ.TargetDrDm) -source_interfaces ip=<TGT_REP_IP> -destination_interfaces ip=<COB_REP_IP>"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "prdCreateInterconnect";
+			CommandHeading = "`r`n## Create Datamover Interconnection Commands __$($OBJ.TargetSystem)__`r`n";
+			CommandString = "$PRDINCCREATE"
+			ExecutionOrder = "06";
+			Comments = "`r`n**Replace all values in <> with their proper values**`r`n"
+		}
+		# Create Replication Interconnect on Cob(DR) System
+		$DRINCCREATE = "nas_cel -interconnect -create $DRINCNAME -source_server $($OBJ.TargetDrDm) -destination_system $($OBJ.TargetSystem) -destination_server $($OBJ.TargetDm) -source_interfaces ip=<COB_REP_IP> -destination_interfaces ip=<TGT_REP_INT>"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "drCreateInterconnect";
+			CommandHeading = "`r`n## Create Datamover Interconnection Commands __$($OBJ.TargetDrSystem)__`r`n";
+			CommandString = "$DRINCCREATE"
+			ExecutionOrder = "07";
+			Comments = "`r`n**Replace all values in <> with their proper values**`r`n"
+		}
+	}
+	$SLICE = $INFILE | Where-Object {$_.TargetSystem -ne "None"} | Sort-Object TargetVdm -Unique
+	ForEach ($OBJ in $SLICE) {
+		$TGTSYS = $($OBJ.TargetSystem)
+		$TGTLOCSUB = $TGTSYS.Substring(0,3).ToUpper()
+		$TGTDRSYS = $($OBJ.TargetDrSystem)
+		$TGTDRLOCSUB = $TGTDRSYS.Substring(0,3).ToUpper()
+		$TGTFRAME = $TGTSYS.Substring(0,$TGTSYS.Length-1)
+		$TGTFRAMENUM = $TGTFRAME.Substring(10,4)
+		$TGTDM = $($OBJ.TargetDm)
+		$TGTDMNUM = $TGTDM.Substring(7)
+		$TGTDRDM = $($OBJ.TargetDrDm)
+		$TGTDRDMNUM = $TGTDRDM.Substring(7)
+		$PRDINCNAME = "${TGTLOCSUB}-DM${TGTDMNUM}_${TGTDRLOCSUB}-DM${TGTDRDMNUM}"
+		# Generate PROD VDM Replication Commands
+		$PRDVDMREP = "nas_replicate -create $($OBJ.TargetVDM)_REP -source -vdm $($OBJ.TargetVDM) -destination -pool $($OBJ.TargetDrStoragePool) -interconnect $PRDINCNAME -max_time_out_of_sync 10 -background"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "prdVdmRep";
+			CommandHeading = "`r`n## VDM Replication Commands __$($OBJ.TargetSystem)__`r`n";
+			CommandString = "$PRDVDMREP";
+			ExecutionOrder = "08";
+			Comments = "`r`n**Replace the all values in <> with their proper values**`r`n"
 		}
 	}
 	$SLICE = $INFILE | Sort-Object -Property TargetVdm,TargetVolume -Unique
 	ForEach ($OBJ in $SLICE) {
 		# Target Filesystem Creation Commands
-		$PRDFSCREATE = "nas_fs -name $($OBJ.TargetVolume) -type uxfs -create size=$($OBJ.SourceCapacityGB)GB pool=$($OBJ.TargetStoragePool) -option slice=y"
+		$PRDFSCREATE = "nas_fs -name $($OBJ.TargetVolume) -create samesize=$($OBJ.SourceVolume):cel=$($OBJ.SourceSystem) pool=$($OBJ.TargetStoragePool) log_type=common -option slice=y"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdFsCreate";
-			CommandHeading = "`r`n## Filesystem Creation Commands for $($OBJ.TargetSystem)`r`n";
+			CommandHeading = "`r`n## Filesystem Creation Commands for __$($OBJ.TargetSystem)__`r`n";
 			CommandString = "$PRDFSCREATE";
 			ExecutionOrder = "10";
-			Comments = "`r`n**If replicating from VNX, use the 'DR' style volume creation command**`r`n"
+			Comments = "`r`n**From older Celerra systems, log_type=common is required for replication to work to newer VNX systems**`r`n"
 		}
 		# FS Mount Commands
-		$PRDFSMOUNT = "server_mount $($OBJ.TargetVDM) $($OBJ.TargetVolume) /$($OBJ.TargetVolume)"
+		$PRDFSMOUNT = "server_mount $($OBJ.TargetVDM) -o ro $($OBJ.TargetVolume) /$($OBJ.TargetVolume)"
         $OUTPUT += New-Object -TypeName PSObject -Property @{
 	        SourceSystem = $OBJ.SourceSystem;
 		    TargetSystem = $OBJ.TargetSystem;
 		    TargetDrSystem = $OBJ.TargetDrSystem;
 		    CommandType = "prdFsMnt";
-		    CommandHeading = "`r`n## Filesystem Mount Commands $($OBJ.TargetSystem)`r`n";
+		    CommandHeading = "`r`n## Filesystem Mount Commands __$($OBJ.TargetSystem)__`r`n";
 		    CommandString = "$PRDFSMOUNT";
 			ExecutionOrder = "11"
+			Comments = "`r`n**Mounting as read-only assuming that native replication will be used to migrate**`r`n"
         }
+		# For Celerra to VNX migrations, the Qtrees will come over with the replication.
+		# Cannot create the Qtrees since we will be mounting the target volumes as read-only
+		<#
 		# FS Qtree Commands
 		$DMNUM = ($($OBJ.TargetDm)).Substring(7)
 		$PRDQTCREATE = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_<VDM_NUM>/$($OBJ.TargetVolume)/$($OBJ.TargetQtree)"
@@ -326,29 +363,33 @@ PROCESS {
 			CommandHeading = "`r`n## Filesystem Qtree Commands $($OBJ.TargetSystem)`r`n";
 			ExecutionOrder = "16";
 			Comments = "`r`n**These commands need to be run as root**`r`n"
-		} 
+		}
+		#>
+		# For Celerra to VNX migrations, CIFS shares are duplicated with sharedup.exe
+		<#
 		# FS Export Commands
-		$PRDEXPCREATE = "server_export $($OBJ.TargetVDM) -Protocol cifs -name $($OBJ.TargetQtree) -o netbios=$($OBJ.TargetVDM) /$($OBJ.TargetVolume)/$($OBJ.TargetQtree)"
+		$PRDCIFSEXP = "server_export $($OBJ.TargetVDM) -Protocol cifs -name $($OBJ.TargetQtree) -o netbios=$($OBJ.TargetVDM) /$($OBJ.TargetVolume)/$($OBJ.TargetQtree)"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdCifsExport";
 			CommandHeading = "`r`n## CIFS Export Commands $($OBJ.TargetSystem)`r`n";
-			CommandString = "$PRDEXPCREATE";
+			CommandString = "$PRDCIFSEXP";
 			ExecutionOrder = "17"
 		}
+		#>
 		# Cob (DR) FS Creation Commands
-		$DRFSCREATE = "nas_fs -name $($OBJ.TargetVolume) -create samesize=$($OBJ.TargetVolume):cel=$($OBJ.TargetSystem) pool=<COB_POOL>" 
+		$DRFSCREATE = "nas_fs -name $($OBJ.TargetVolume) -create samesize=$($OBJ.TargetVolume):cel=$($OBJ.TargetSystem) pool=$($OBJ.TargetDrStoragePool) log_type=common" 
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "drFsCreate";
-			CommandHeading = "`r`n## Filesystem Creation Commands $($OBJ.TargetDrSystem)`r`n";
+			CommandHeading = "`r`n## Filesystem Creation Commands __$($OBJ.TargetDrSystem)__`r`n";
 			CommandString = "$DRFSCREATE";
 			ExecutionOrder = "15";
-			Comments = "`r`n**Replace the <COB_POOL> with the name of the storage pool on the COB VNX**`r`n"
+			Comments = "`r`n**The log_type=common is required when replicating from Celerra -> Target VNX -> Target COB VNX**`r`n"
 		}
 		# COB (DR) FS Mount Commands
 		$DRFSMOUNT = "server_mount $($OBJ.TargetVDM) -o ro $($OBJ.TargetVolume) /$($OBJ.TargetVolume)"
@@ -357,22 +398,33 @@ PROCESS {
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "drFsMnt";
-			CommandHeading = "`r`n## Filesystem Mount Commands $($OBJ.TargetDrSystem)`r`n";
+			CommandHeading = "`r`n## Filesystem Mount Commands __$($OBJ.TargetDrSystem)__`r`n";
 			CommandString = "$DRFSMOUNT";
 			ExecutionOrder = "18";
 			Comments = "`r`n**Must mount FS as read-only for replication commands to work**`r`n"
 		}
 		# Filesystem Replication Commands
-		$PRDFSREP = "nas_replicate -create $($OBJ.TargetVolume)_REP -source -fs $($OBJ.TargetVolume) -destination -fs $($OBJ.TargetVolume) -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
+		$TGTSYS = $($OBJ.TargetSystem)
+		$TGTLOCSUB = $TGTSYS.Substring(0,3).ToUpper()
+		$TGTDRSYS = $($OBJ.TargetDrSystem)
+		$TGTDRLOCSUB = $TGTDRSYS.Substring(0,3).ToUpper()
+		$TGTFRAME = $TGTSYS.Substring(0,$TGTSYS.Length-1)
+		$TGTFRAMENUM = $TGTFRAME.Substring(10,4)
+		$TGTDM = $($OBJ.TargetDm)
+		$TGTDMNUM = $TGTDM.Substring(7)
+		$TGTDRDM = $($OBJ.TargetDrDm)
+		$TGTDRDMNUM = $TGTDRDM.Substring(7)
+		$PRDINCNAME = "${TGTLOCSUB}-DM${TGTDMNUM}_${TGTDRLOCSUB}-DM${TGTDRDMNUM}"
+		$PRDFSREP = "nas_replicate -create $($OBJ.TargetVolume)_REP -source -fs $($OBJ.TargetVolume) -destination -fs $($OBJ.TargetVolume) -interconnect $PRDINCNAME -max_time_out_of_sync 10 -background"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdFsRep";
-			CommandHeading = "`r`n## Filesystem Replication Commands $($OBJ.TargetSystem)`r`n";
+			CommandHeading = "`r`n## Filesystem Replication Commands __$($OBJ.TargetSystem)__`r`n";
 			CommandString = "$PRDFSREP";
 			ExecutionOrder = "19";
-			Comments = "`r`n**Replace <INTERCONNECT_NAME> with the name of the datamover interconnect**`r`n"
+			Comments = ""
 		}
 		# Filesystem Deduplication Commands
 		$PRDFSDEDUPE = "fs_dedupe -modify $($OBJ.TargetVolume) -state on"
@@ -381,10 +433,10 @@ PROCESS {
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdFsDedupe";
-			CommandHeading = "`r`n## Filesystem Deduplication Commands $($OBJ.TargetSystem)`r`n";
+			CommandHeading = "`r`n## Filesystem Deduplication Commands __$($OBJ.TargetSystem)__`r`n";
 			CommandString = "$PRDFSDEDUPE";
 			ExecutionOrder = "20"
-			Comments = "`r`n**Only run dedupe commands if dedupe is enabled on the source**`r`n"
+			Comments = ""
 		}
 		# Prod Filesystem Checkpoint Commands
 		$PRDFSCKPT = "nas_ckpt_schedule -create $($OBJ.TargetVolume)_DAILY_SCHED -filesystem $($OBJ.TargetVolume) -description ""1730hrs daily checkpoint schedule for $($OBJ.TargetVolume)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:30 -keep 7"
@@ -393,25 +445,25 @@ PROCESS {
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdFsCkpt";
-			CommandHeading = "`r`n## Filesystem Checkpoint Commands $($OBJ.TargetSystem)`r`n";
+			CommandHeading = "`r`n## Filesystem Checkpoint Commands __$($OBJ.TargetSystem)__`r`n";
 			CommandString = "$PRDFSCKPT";
 			ExecutionOrder = "21";
-			Comments = "`r`n**Only run these commands after initial base copy has been completed**`r`n**Replace the <DATE> with the date which the command is executed**`n"
+			Comments = "`r`n**Only run these commands after cutover**`r`n**Replace the <DATE> with the date which the command is executed**`n"
 		}
 		# COB (DR) Filesystem Backup Checkpoint Commands
-		$DRFSCKPT = "nas_ckpt_schedule -create $($OBJ.TargetVolume)`_DAILY_SCHED -filesystem $($OBJ.TargetVolume) -description ""1710hrs daily checkpoint schedule for $($OBJ.TargetVolume)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:10 -ckpt_name $($OBJ.TargetVolume)_ckpt_backup"
+		$DRFSCKPT = "nas_ckpt_schedule -create $($OBJ.TargetVolume)`_DAILY_SCHED -filesystem $($OBJ.TargetVolume) -description ""1710hrs daily checkpoint schedule for $($OBJ.TargetVolume)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:10 -ckpt_name $($OBJ.TargetVolume)_ckpt_bkup"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "drFsCkpt";
-			CommandHeading = "`r`n## Filesystem Checkpoint Commands $($OBJ.TargetDrSystem)`r`n";
+			CommandHeading = "`r`n## Filesystem Checkpoint Commands __$($OBJ.TargetDrSystem)__`r`n";
 			CommandString = "$DRFSCKPT";
 			ExecutionOrder = "22";
 			Comments = "`r`n**Only run these commands after tgt->cob replication has been completed**`r`n**Replace the <DATE> with the date which the command is executed**`n"
 		}
 		# EMCOPY Incremental Commands
-		$EMCOPYINC = "emcopy64.exe \\$($OBJ.SourceCifsServer)\$($OBJ.SourceVolume) \\$($OBJ.TargetVdm)\$($OBJ.TargetQtree) /s /sdd /d /o /a /secfix /i /lg /purge /r:0 /w:0 /c /log:D:\emcopy-log\$($OBJ.SourceVolume).txt"
+		$EMCOPYINC = "emcopy64.exe \\$($OBJ.SourceCifsServer)\$($OBJ.SourceQtree) \\$($OBJ.TargetVdm)\$($OBJ.TargetQtree) /s /sdd /d /o /a /secfix /i /lg /purge /r:0 /w:0 /c /log:D:\emcopy-log\$($OBJ.SourceVolume).txt"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -422,7 +474,7 @@ PROCESS {
 			ExecutionOrder = "23"
 		}
 		# EMCOPY Final Commands
-		$EMCOPYFIN = "emcopy64.exe \\$($OBJ.SourceCifsServer)\$($OBJ.SourceVolume) \\$($OBJ.TargetVdm)\$($OBJ.TargetQtree) /s /sdd /d /o /a /i /lg /purge /r:0 /w:0 /c /log:D:\emcopy-log\$($OBJ.SourceVolume)-final.txt"
+		$EMCOPYFIN = "emcopy64.exe \\$($OBJ.SourceCifsServer)\$($OBJ.SourceQtree) \\$($OBJ.TargetVdm)\$($OBJ.TargetQtree) /s /sdd /d /o /a /i /lg /purge /r:0 /w:0 /c /log:D:\emcopy-log\$($OBJ.SourceVolume)-final.txt"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -433,30 +485,51 @@ PROCESS {
 			ExecutionOrder = "24"
 		}
 	}
-	$SLICE = $INFILE | Sort-Object TargetVdm -Unique
+	$SLICE = $INFILE | Where-Object {$_.TargetVdm -ne "None"} | Sort-Object TargetVdm -Unique
 	ForEach ($OBJ in $SLICE) {
 		# Generate Prod Create CIFS Server Commands
-		$PRDCIFSCREATE = "server_cifs $($OBJ.TargetCifsServer) -add compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,interface=<INT_NAME>,local_users"
+		$TGTSYS = $($OBJ.TargetSystem)
+		$TGTLOCSUB = $TGTSYS.Substring(0,3).ToUpper()
+		$TGTFRAME = $TGTSYS.Substring(0,$TGTSYS.Length-1)
+		$TGTFRAMENUM = $TGTFRAME.Substring(10,4)
+		$TGTDM = $($OBJ.TargetDm)
+		$TGTDMNUM = $TGTDM.Substring(7)
+		$PRDINT = "${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}C0#"
+		$PRDCIFSCREATE = "server_cifs $($OBJ.TargetCifsServer) -add compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,interface=$PRDINT,local_users"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdCifsCreate";
-			CommandHeading = "`r`n## Create CIFS Server Commands $($OBJ.TargetSystem)`r`n";
+			CommandHeading = "`r`n## Create CIFS Server Commands __$($OBJ.TargetSystem)__`r`n";
 			CommandString = "$PRDCIFSCREATE";
 			ExecutionOrder = "13";
-			Comments = "`r`n**Replace <INT_NAME> with the interface name**`r`n"
+			Comments = "`r`n**Replace the trailing '#' in ther interface name with the proper interface number**`r`n**The password prompt after this command is for the local administrator password for the CIFS server (typically 'Brooklyn1')`n"
 		}
-		$PRDCIFSJOIN = "server_cifs $($OBJ.TargetCifsServer) -Join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=<ADMIN_USER>,ou=`"ou=Servers:ou=NAS:ou=INFRA`""
+		$PRDCIFSJOIN = "server_cifs $($OBJ.TargetCifsServer) -Join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=srv_nascopy@nam.nsroot.net,ou=`"ou=Servers:ou=NAS:ou=GWIS:ou=INFRA`""
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
 			TargetDrSystem = $OBJ.TargetDrSystem;
 			CommandType = "prdCifsJoin";
-			CommandHeading = "`r`n## Join CIFS Server Commands $($OBJ.TargetSystem)`r`n";
+			CommandHeading = "`r`n## Join CIFS Server Commands __$($OBJ.TargetSystem)__`r`n";
 			CommandString = "$PRDCIFSJOIN";
 			ExecutionOrder = "14";
-			Comments = "`r`n**Replace the <ADMIN_USER> with a user that can add computers to the domain**`r`n"
+			Comments = "`r`n**The password prompt is for the NT password for the user NAM\srv_nascopy**`r`n"
+		}
+	}
+	$SLICE = $INFILE | Where-Object {$_.TargetNfsServer -ne "None"}
+	ForEach ($OBJ in $SLICE) {
+		$PRDNFSEXP = "server_export $($OBJ.TargetNfsServer) -Protocol nfs -name $($OBJ.TargetQtree) -o rw=$($OBJ.TargetQtree)_rw,ro=$($OBJ.TargetQtree)_ro,root=$($OBJ.TargetQtree)_root /$($OBJ.TargetVolume)/$($OBJ.TargetQtree)"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "prdNfsExport";
+			CommandHeading = "`r`n## NFS Export Commands __$($OBJ.TargetSystem)__`r`n";
+			CommandString = "$PRDNFSEXP";
+			ExecutionOrder = "17"
+			Comments = "`r`n**Exports cannot be created until replication is complete**`r`n"
 		}
 	}
 }
