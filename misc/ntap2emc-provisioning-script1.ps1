@@ -104,19 +104,27 @@ BEGIN {
 		@{Name='SourceVfiler';Expression={$_.'PROD Vfiler'}},
 		@{Name='SourceVolume';Expression={$_.'PROD Volume'}},
 		@{Name='SourceAggregate';Expression={$_.'Aggregate Name'}},
+		@{Name='Dedupe';Expression={$_.'Dedupe'}},
+		@{Name='NonRep';Expression={$_.'NON REP'}},
+		@{Name='Rep';Expression={$_.'REP'}},
 		@{Name='SourceUsedCapacityGB';Expression={$_.'Volume Total Capacity (GB)'}},
 		@{Name='SourceCapacityGB';Expression={$_.'Volume Total Capacity (GB)'}},
 		@{Name='SourceUsedCapacityPercent';Expression={$_.'Volume Used %'}},
-		@{Name='AccessType';Expression={$_.'Access Type'}},
-		@{Name='SecurityStyle';Expression={$_.'Volume Security'}},
+		@{Name='AccessType';Expression={$_.'ACCESS'}},
+		@{Name='AccessType1';Expression={$_.'Access1'}},
+		@{Name='TechRefresh';Expression={$_.'Tech Refresh'}},
+		@{Name='Comments';Expression={$_.'Comments'}},
+		@{Name='SecurityStyle';Expression={$_.'Volume Security Style'}},
+		@{Name='Replication';Expression={$_.'Replication'}},
 		@{Name='SourceDrLocation';Expression={$_.'COB Location'}},
 		@{Name='SourceDrSystem';Expression={$_.'COB Filer'}},
 		@{Name='SourceDrVfiler';Expression={$_.'COB Vfiler'}},
 		@{Name='SourceDrVolume';Expression={$_.'COB Volume'}},
+		@{Name='DataType';Expression={$_.'APP/User'}},
 		@{Name='TechRefresh';Expression={$_.'Tech Refresh'}},
-		@{Name='TargetSystem';Expression={$_.'Target Prod VNX Frame'}},
+		@{Name='TargetSystem';Expression={$_.'Prod VNX Frame'}},
 		@{Name='TargetDm';Expression={$_.'Prod Physical DataMover'}},
-		@{Name='TargetVdm';Expression={$_.'VDM'}},
+		@{Name='TargetVdm';Expression={$_.'Virtual DataMover'}},
 		@{Name='TargetVdmRootDir';Expression={$_.'Root VDM Directory'}},
 		@{Name='TargetQipEntry';Expression={$_.'Prod QIP Entry'}},
 		@{Name='TargetIp';Expression={$_.'IP Address'}},
@@ -128,9 +136,13 @@ BEGIN {
 		@{Name='TargetQtree';Expression={$_.'Qtree&share name'}},
 		@{Name='TargetStoragePool';Expression={$_.'Prod Pool'}},
 		@{Name='LdapSetup';Expression={$_.'Ldap setup'}},
-		@{Name='TargetDrSystem';Expression={$_.'COB VNX'}},
+		@{Name='TargetDrSystem';Expression={$_.'COB VNX Frame'}},
+		@{Name='TargetDrDm';Expression={$_.'COB Physical DataMover'}},
+		@{Name='TargetDrQipEntry';Expression={$_.'COB QIP Entry'}},
 		@{Name='TargetDrVdm';Expression={$_.'COB VDM'}},
-		@{Name='TargetDrIp';Expression={$_.'Cob IP Address'}}
+		@{Name='TargetDrVolume';Expression={$_.'Cob File System'}},
+		@{Name='TargetDrStoragePool';Expression={$_.'Cob Pool'}},
+		@{Name='TargetDrIp';Expression={$_.'Cob IP'}}
 	# This just slices the import file with only the source system
 	# specified when the script was executed
 	If ($SourceSystem -notcontains $NULL) {
@@ -182,7 +194,7 @@ PROCESS {
 	}
 	$SLICE = $OBJARRAY | Sort-Object -Property TargetVdm,TargetIp -Unique
 	ForEach ($OBJ in $SLICE) {
-		$TGTLOC = $($OBJ.ProdLocation)
+		$TGTLOC = $($OBJ.TargetSystem)
 		$TGTLOCSUB = $TGTLOC.Substring(0,3)
 		$TGTSYS = $($OBJ.TargetSystem)
 		$TGTFRAME = $TGTSYS.Substring(0,$TGTSYS.Length-1)
