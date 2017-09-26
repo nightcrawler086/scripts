@@ -14,34 +14,35 @@ BEGIN {
 	# Defining the Properties that we need to compare
 	$SAPROPS = @("SA_SNOW_Queue","App_SNOW_Queue","Dispatch_Alert_SNOW_Queue")
 	# Base output object (essentially a row in the nasccp file)
+	# Currently not used
 	<#
-	$HASH = @{ AlertSuppress = $($TGT.AlertSuppress);
-		AppID = $($TGT.AppID);
-		Apps_Support_Group_Distribution_List = $($TGT.Apps_Support_Group_Distribution_List);
-		Archived_By = $($TGT.Archived_By);
-		Archived_Date = $($TGT.Archived_Date);
-		Business_Group_Distribution_List = $($TGT.Business_Group_Distribution_List);
-		Business_Sector = $($TGT.Business_Sector);
-		CCP_Record_Created_By = $($TGT.CCP_Record_Created_By);
-		CCP_Record_Create_Date = $($TGT.CCP_Record_Create_Date);
-		CCP_Record_Modified_By = $($TGT.CCP_Record_Modified_by);
-		CCP_Record_Modify_Date = $($TGT.CCP_Record_Modify_Date);
-		ID = $($TGT.ID);
-		NAS_Alias_vFiler = $($TGT.NAS_Alias_vFiler);
-		NAS_Frame_DR = $($TGT.NAS_Frame_DR);
-		NAS_Frame_PROD = $($TGT.NAS_Frame_PROD);
-		NAS_Qtree = $($TGT.NAS_Qtree);
-		NAS_VDM_vFiler = $($TGT.NAS_VDM_vFiler);
-		NAS_Volume = $($TGT.NAS_Volume);
-		Netbackup_Policy = $($TGT.Netbackup_Policy);
-		NotificationSetting = $($TGT.NotificationSetting);
-		Region = $($TGT.Region);
-		SA_Support_Group_Distribution_List = $($TGT.SA_Support_Group_Distribution_List);
-		SNOW_ChangeManagement = $($TGT.SNOW_ChangeManagement);
-		SNOW_GreenZoneEnd = $($TGT.SNOW_GreenZoneEnd);
-		SNOW_GreenZoneFrequency = $($TGT.SNOW_GreenZoneFrequency);
-		SNOW_GreenZoneStart = $($TGT.SNOW_GreenZoneStart);
-		Vendor = $($TGT.Vendor)
+	$HASH = @{ AlertSuppress = $($T.AlertSuppress);
+		AppID = $($T.AppID);
+		Apps_Support_Group_Distribution_List = $($T.Apps_Support_Group_Distribution_List);
+		Archived_By = $($T.Archived_By);
+		Archived_Date = $($T.Archived_Date);
+		Business_Group_Distribution_List = $($T.Business_Group_Distribution_List);
+		Business_Sector = $($T.Business_Sector);
+		CCP_Record_Created_By = $($T.CCP_Record_Created_By);
+		CCP_Record_Create_Date = $($T.CCP_Record_Create_Date);
+		CCP_Record_Modified_By = $($T.CCP_Record_Modified_by);
+		CCP_Record_Modify_Date = $($T.CCP_Record_Modify_Date);
+		ID = $($T.ID);
+		NAS_Alias_vFiler = $($T.NAS_Alias_vFiler);
+		NAS_Frame_DR = $($T.NAS_Frame_DR);
+		NAS_Frame_PROD = $($T.NAS_Frame_PROD);
+		NAS_Qtree = $($T.NAS_Qtree);
+		NAS_VDM_vFiler = $($T.NAS_VDM_vFiler);
+		NAS_Volume = $($T.NAS_Volume);
+		Netbackup_Policy = $($T.Netbackup_Policy);
+		NotificationSetting = $($T.NotificationSetting);
+		Region = $($T.Region);
+		SA_Support_Group_Distribution_List = $($T.SA_Support_Group_Distribution_List);
+		SNOW_ChangeManagement = $($T.SNOW_ChangeManagement);
+		SNOW_GreenZoneEnd = $($T.SNOW_GreenZoneEnd);
+		SNOW_GreenZoneFrequency = $($T.SNOW_GreenZoneFrequency);
+		SNOW_GreenZoneStart = $($T.SNOW_GreenZoneStart);
+		Vendor = $($T.Vendor)
 	}
 	#>
 	# Our output array
@@ -50,113 +51,80 @@ BEGIN {
 
 PROCESS {
 
-	$TIMER = [System.Diagnostics.StopWatch]::StartNew()
+	# Stopwatch
+	#$TIMER = [System.Diagnostics.StopWatch]::StartNew()
 	# Importing required files
-
-	$TRACKER = Import-Csv $MappingFile | Where-Object {$_.Status -eq "5. Completed" -or $_.Status -eq "4. Pending Offline"}
-	$TRACKER = $TRACKER | Where-Object {$_.'Target VDM' -ne "" -and $_.'Target VDM' -ne "N/A" -and $_.'Target VDM' -ne $NULL}
-	$TRACKER = $TRACKER | Where-Object {$_.'Prod File System' -ne "" -and $_.'Prod File System' -ne "N/A" -and $_.'Prod File System' -ne $NULL}
-	#$NASCCP = $NASCCP | Where-Object {$_."$($SAPROPS[0])" -eq "" -or $_."$($SAPROPS[0])" -eq "0" -and
-	#									$_."$($SAPROPS[1])" -eq "" -or $_."$($SAPROPS[1])" -eq "0" -and
-	#										$_."$($SAPROPS[2])" -eq "" -or $_."$($SAPROPS[2])" -eq "0"}
-	$COUNT = $TRACKER | Measure-Object
+	Write-Host "Processing Tracker"
+	# Getting all volumes that have been migrated (Status = Completed or Pending Offline)
+	# Filtering all invalid records
+	$TRFILE = Import-Csv $MappingFile | Where-Object {$_.Status -eq "5. Completed" -or $_.Status -eq "4. Pending Offline"}
+	$TRFILE = $TRFILE | Where-Object {$_.'Target VDM' -ne "" -and $_.'Target VDM' -ne "N/A" -and $_.'Target VDM' -ne $NULL}
+	$TRFILE = $TRFILE | Where-Object {$_.'Prod File System' -ne "" -and $_.'Prod File System' -ne "N/A" -and $_.'Prod File System' -ne $NULL}
+	Write-Host "Processing NASCCP file"
+	# Remove Duplicates
+	$NASCCP = $NASCCP | Sort-Object -Property NAS_Frame_PROD,NAS_Volume -Unique
+	# Some Counters
+	$COUNT = $TRFILE | Measure-Object
 	Write-Host "$($COUNT.Count) objects in tracker to compare"
-	$COUNTER = 0
-	# Conditions go here
-	ForEach ($ROW in $TRACKER) {
-		Write-Host "$COUNTER objects compared..."
-		#$VDM = "$($ROW.'Target VDM')"
-		#$VDM = $VDM.Replace("vnaz","vnas")
-		#Write-Host "Source= VDM: $($ROW.'NETAPP Prod VFiler') | Volume=$($ROW.'NETAPP Prod Volume')"
-		#Write-Host "Target= VDM: $($ROW.'Target VDM') / $VDM | Volume=$($ROW.'Prod File System')"
-		$SRC = $NASCCP | Where-Object {$_.NAS_Frame_PROD -eq "$($ROW.'NETAPP Prod Filer')" -and $_.NAS_Volume -eq "$($ROW.'NETAPP Prod Volume')"}
-		$TGT = $NASCCP | Where-Object {$_.NAS_Frame_PROD -eq "$($ROW.'Target PROD VNX Frame')" -and $_.NAS_Volume -eq "$($ROW.'Prod File System')"}
-		#Write-Host "Matching Source Volume Record: $SRC"
-		#Write-Host "Matching Target Volume Record: $TGT"
-		If ($TGT -and $SRC) {
-			$OBJ = New-Object -TypeName PSObject -Property @{ AlertSuppress = $($TGT.AlertSuppress);
-				AppID = $($TGT.AppID);
-				Apps_Support_Group_Distribution_List = $($TGT.Apps_Support_Group_Distribution_List);
-				Archived_By = $($TGT.Archived_By);
-				Archived_Date = $($TGT.Archived_Date);
-				Business_Group_Distribution_List = $($TGT.Business_Group_Distribution_List);
-				Business_Sector = $($TGT.Business_Sector);
-				CCP_Record_Created_By = $($TGT.CCP_Record_Created_By);
-				CCP_Record_Create_Date = $($TGT.CCP_Record_Create_Date);
-				CCP_Record_Modified_By = $($TGT.CCP_Record_Modified_by);
-				CCP_Record_Modify_Date = $($TGT.CCP_Record_Modify_Date);
-				ID = $($TGT.ID);
-				NAS_Alias_vFiler = $($TGT.NAS_Alias_vFiler);
-				NAS_Frame_DR = $($TGT.NAS_Frame_DR);
-				NAS_Frame_PROD = $($TGT.NAS_Frame_PROD);
-				NAS_Qtree = $($TGT.NAS_Qtree);
-				NAS_VDM_vFiler = $($TGT.NAS_VDM_vFiler);
-				NAS_Volume = $($TGT.NAS_Volume);
-				Netbackup_Policy = $($TGT.Netbackup_Policy);
-				NotificationSetting = $($TGT.NotificationSetting);
-				Region = $($TGT.Region);
-				SA_Support_Group_Distribution_List = $($TGT.SA_Support_Group_Distribution_List);
-				SNOW_ChangeManagement = $($TGT.SNOW_ChangeManagement);
-				SNOW_GreenZoneEnd = $($TGT.SNOW_GreenZoneEnd);
-				SNOW_GreenZoneFrequency = $($TGT.SNOW_GreenZoneFrequency);
-				SNOW_GreenZoneStart = $($TGT.SNOW_GreenZoneStart);
-				Vendor = $($TGT.Vendor)
-			}
-			#Write-Host "Found Source and Target volume match in NASCCP"
-			ForEach ($PROP in $SAPROPS) {
-				If ($($SRC.$PROP) -ne "" -and $($SRC.$PROP) -ne "0") {
-					$OBJ | Add-Member -NotePropertyMembers @{"$PROP"="$($SRC.'$PROP')"}
-					$OBJ | Add-Member -NotePropertyMembers @{"${PROP}Modified"="SourceVolRecord"}
-					#Write-Host "Used Source Volume Record for $($TGT.NAS_VDM_vFiler):$($TGT.NAS_Volume) $PROP"
+	$TOTAL = 0
+	$STCOUNT = 0
+	$TCOUNT = 0
+	$NONE = 0
+	# For each row in our tracker
+	ForEach ($R in $TRFILE) {
+		Write-Progress -Activity "Processed: $TOTAL | SRC/TGT: $STCOUNT | TGT: $TCOUNT | None: $NONE" -Status "Complete: $($TOTAL / $($COUNT.Count) * 100)`%"
+		$S = $NASCCP | Where-Object {$_.NAS_Frame_PROD -eq "$($R.'NETAPP Prod Filer')" -and $_.NAS_Volume -eq "$($R.'NETAPP Prod Volume')"}
+		$T = $NASCCP | Where-Object {$_.NAS_Frame_PROD -eq "$($R.'Target PROD VNX Frame')" -and $_.NAS_Volume -eq "$($R.'Prod File System')"}
+		If ($T -and $S) {
+			# Creates an empty hash table
+			$HT = @{}
+			# Loops through properties in target object, adds their
+			# name/value pairs to the empty hash table
+			$T.PSObject.Properties | Foreach { $HT[$_.Name] = $_.Value }
+			# Creates a new object with our hash table
+			$OBJ = New-Object -TypeName PSObject -Property $HT
+			ForEach ($P in $SAPROPS) {
+				If ($($S.$P) -ne "" -and $($S.$P) -ne "0" -and $($S.$P) -notlike "N*A") {
+					# Replace empty target property with source property
+					$OBJ.$P = "$($S.$P)"
+					# Add new property showing where the above value is sourced
+					$OBJ | Add-Member -NotePropertyMembers @{"${P}Modified"="SourceVolume"}
 				}
 			}
+			$OUTPUT += $OBJ
+			$STCOUNT++
 		}
-		ElseIf ($TGT) {
-			$OBJ = New-Object -TypeName PSObject -Property @{ AlertSuppress = $($TGT.AlertSuppress);
-				AppID = $($TGT.AppID);
-				Apps_Support_Group_Distribution_List = $($TGT.Apps_Support_Group_Distribution_List);
-				Archived_By = $($TGT.Archived_By);
-				Archived_Date = $($TGT.Archived_Date);
-				Business_Group_Distribution_List = $($TGT.Business_Group_Distribution_List);
-				Business_Sector = $($TGT.Business_Sector);
-				CCP_Record_Created_By = $($TGT.CCP_Record_Created_By);
-				CCP_Record_Create_Date = $($TGT.CCP_Record_Create_Date);
-				CCP_Record_Modified_By = $($TGT.CCP_Record_Modified_by);
-				CCP_Record_Modify_Date = $($TGT.CCP_Record_Modify_Date);
-				ID = $($TGT.ID);
-				NAS_Alias_vFiler = $($TGT.NAS_Alias_vFiler);
-				NAS_Frame_DR = $($TGT.NAS_Frame_DR);
-				NAS_Frame_PROD = $($TGT.NAS_Frame_PROD);
-				NAS_Qtree = $($TGT.NAS_Qtree);
-				NAS_VDM_vFiler = $($TGT.NAS_VDM_vFiler);
-				NAS_Volume = $($TGT.NAS_Volume);
-				Netbackup_Policy = $($TGT.Netbackup_Policy);
-				NotificationSetting = $($TGT.NotificationSetting);
-				Region = $($TGT.Region);
-				SA_Support_Group_Distribution_List = $($TGT.SA_Support_Group_Distribution_List);
-				SNOW_ChangeManagement = $($TGT.SNOW_ChangeManagement);
-				SNOW_GreenZoneEnd = $($TGT.SNOW_GreenZoneEnd);
-				SNOW_GreenZoneFrequency = $($TGT.SNOW_GreenZoneFrequency);
-				SNOW_GreenZoneStart = $($TGT.SNOW_GreenZoneStart);
-				Vendor = $($TGT.Vendor)
-			}
-			#Write-Host "Only found target volume in NASCCP"
-			If ($($ROW.'SA SNOW Queue Name') -ne "" -and $($ROW.'SA SNOW Queue Name') -ne "0" -and
-				$($ROW.'SA SNOW Queue Name') -ne "#N/A" -and $($ROW.'SA SNOW Queue Name') -ne "NULL") {
-				ForEach ($PROP in $SAPROPS) {
-					$OBJ | Add-Member -NotePropertyMembers @{"$PROP"="$($ROW.'SA SNOW Queue Name')"}
-					$OBJ | Add-Member -NotePropertyMembers @{"${PROP}Modified"="Tracker"}
-					#Write-Host "Tracker for $($TGT.NAS_VDM_vFiler):$($TGT.NAS_Volume) Property $PROP"
+		ElseIf (!$S -and $T) {
+			If ($($R.'SA SNOW Queue Name') -ne "" -and $($R.'SA SNOW Queue Name') -ne "0" -and
+				$($R.'SA SNOW Queue Name') -ne "#N/A" -and $($R.'SA SNOW Queue Name') -ne "NULL") {
+				# Creates an empty hash table
+				$HT = @{}
+				# Loops through properties in target object, adds their
+				# name/value pairs to the empty hash table
+				$T.PSObject.Properties | Foreach { $HT[$_.Name] = $_.Value }
+				# Creates a new object with our hash table
+				$OBJ = New-Object -TypeName PSObject -Property $HT
+				ForEach ($P in $SAPROPS) {
+					# Replaces property in target object with value from our tracker
+					$OBJ.$P = $($R.'SA SNOW Queue Name')
+					$OBJ | Add-Member -NotePropertyMembers @{"${P}Modified"="Tracker"}
 				}
+			$OUTPUT += $OBJ
+			$TCOUNT++
 			}
 		}
-	$OUTPUT += $OBJ
-	$COUNTER++
+		Else { $NONE++ }
+		$TOTAL++
 	}
 }
 
 END{
 
-$OUTPUT
+	Write-Host "Totals:"
+	Write-Host "$TOTAL objects processed"
+	Write-Host "$STCOUNT objects found match for Source and Target"
+	Write-Host "$TCOUNT objects only found match for Target only"
+	Write-Host "$NONE objects found no match in NASCCP"
+	$OUTPUT
 
 }
