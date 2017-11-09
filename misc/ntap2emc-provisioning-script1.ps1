@@ -104,19 +104,26 @@ BEGIN {
 		@{Name='SourceVfiler';Expression={$_.'PROD Vfiler'}},
 		@{Name='SourceVolume';Expression={$_.'PROD Volume'}},
 		@{Name='SourceAggregate';Expression={$_.'Aggregate Name'}},
+		@{Name='Dedupe';Expression={$_.'Dedupe'}},
+		@{Name='NonRep';Expression={$_.'NON REP'}},
+		@{Name='Rep';Expression={$_.'REP'}},
 		@{Name='SourceUsedCapacityGB';Expression={$_.'Volume Total Capacity (GB)'}},
 		@{Name='SourceCapacityGB';Expression={$_.'Volume Total Capacity (GB)'}},
 		@{Name='SourceUsedCapacityPercent';Expression={$_.'Volume Used %'}},
-		@{Name='AccessType';Expression={$_.'Access Type'}},
-		@{Name='SecurityStyle';Expression={$_.'Volume Security'}},
+		@{Name='AccessType';Expression={$_.'ACCESS'}},
+		@{Name='AccessType1';Expression={$_.'Access1'}},
+		@{Name='TechRefresh';Expression={$_.'Tech Refresh'}},
+		@{Name='Comments';Expression={$_.'Comments'}},
+		@{Name='SecurityStyle';Expression={$_.'Volume Security Style'}},
+		@{Name='Replication';Expression={$_.'Replication'}},
 		@{Name='SourceDrLocation';Expression={$_.'COB Location'}},
 		@{Name='SourceDrSystem';Expression={$_.'COB Filer'}},
 		@{Name='SourceDrVfiler';Expression={$_.'COB Vfiler'}},
 		@{Name='SourceDrVolume';Expression={$_.'COB Volume'}},
-		@{Name='TechRefresh';Expression={$_.'Tech Refresh'}},
-		@{Name='TargetSystem';Expression={$_.'Target Prod VNX Frame'}},
+		@{Name='DataType';Expression={$_.'APP/User'}},
+		@{Name='TargetSystem';Expression={$_.'Prod VNX Frame'}},
 		@{Name='TargetDm';Expression={$_.'Prod Physical DataMover'}},
-		@{Name='TargetVdm';Expression={$_.'VDM'}},
+		@{Name='TargetVdm';Expression={$_.'Virtual DataMover'}},
 		@{Name='TargetVdmRootDir';Expression={$_.'Root VDM Directory'}},
 		@{Name='TargetQipEntry';Expression={$_.'Prod QIP Entry'}},
 		@{Name='TargetIp';Expression={$_.'IP Address'}},
@@ -128,9 +135,13 @@ BEGIN {
 		@{Name='TargetQtree';Expression={$_.'Qtree&share name'}},
 		@{Name='TargetStoragePool';Expression={$_.'Prod Pool'}},
 		@{Name='LdapSetup';Expression={$_.'Ldap setup'}},
-		@{Name='TargetDrSystem';Expression={$_.'COB VNX'}},
+		@{Name='TargetDrSystem';Expression={$_.'COB VNX Frame'}},
+		@{Name='TargetDrDm';Expression={$_.'COB Physical DataMover'}},
+		@{Name='TargetDrQipEntry';Expression={$_.'COB QIP Entry'}},
 		@{Name='TargetDrVdm';Expression={$_.'COB VDM'}},
-		@{Name='TargetDrIp';Expression={$_.'Cob IP Address'}}
+		@{Name='TargetDrVolume';Expression={$_.'Cob File System'}},
+		@{Name='TargetDrStoragePool';Expression={$_.'Cob Pool'}},
+		@{Name='TargetDrIp';Expression={$_.'Cob IP'}}
 	# This just slices the import file with only the source system
 	# specified when the script was executed
 	If ($SourceSystem -notcontains $NULL) {
@@ -140,6 +151,7 @@ BEGIN {
 	$OBJARRAY = @()
 	# Let's try to validate the properties of our import file
 	# This is a very simple validation, looking for empty properties
+	
 	$INDEX = 0
 	$PROPS = (($INFILE | Get-Member) | Where-Object {$_.MemberType -eq "NoteProperty"} | Select-Object -Property Name).Name
 	ForEach ($OBJ in $INFILE) {
@@ -154,22 +166,30 @@ BEGIN {
 		$OBJ | Add-Member -Name IsValid -MemberType NoteProperty -Value $VALID	
 		$OBJARRAY += $OBJ
 	}
+
 	# Define Output Array
 	$OUTPUT = @()
 
 
 }
 PROCESS {
+<#
 	$OBJCOUNT = $OBJARRAY | Measure-Object | Select-Object -ExpandProperty Count
 	$VALIDOBJ = $OBJARRAY | Where-Object {$_.IsValid -eq $True} | Measure-Object | Select-Object -ExpandProperty Count
 	Write-Host -ForegroundColor Yellow "$VALIDOBJ of $OBJCOUNT objects have empty properties"
 	Write-Host -ForegroundColor Yellow "This may or may not be expected..."
-	
+#>
 	# Begin fill custom object with our configuration commands
-	$SLICE = $OBJARRAY | Sort-Object -Property TargetVdm -Unique
+	$SLICE = $OBJARRAY | Sort-Object -Property TargetVdm -Unique | Where-Object {$_.TechRefresh -eq "YES" -and $_.TargetVdm -ne ""}
 	ForEach ($OBJ in $SLICE) {
+		If ($($OBJ.TargetDm)) {
+			$TGTDM = $($OBJ.TargetDm)
+		} Else { $TGTDM = "<TARGET_DM>" }
+		$TGTVDM = $($OBJ.TargetVdm)
+		$TGTVDM = $TGTVDM.Trim()
+		$TGTVDM = $TGTVDM.ToLower()
 		# Target VDM Creation Commands
-		$CMDSTR = "nas_server -name $($OBJ.TargetVDM) -type vdm -create $($OBJ.TargetDM) -setstate loaded pool=$($OBJ.TargetStoragePool)"
+		$CMDSTR = "nas_server -name $TGTVDM -type vdm -create $TGTDM -setstate loaded pool=$($OBJ.TargetStoragePool)"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -177,19 +197,28 @@ PROCESS {
 			CommandType = "prdVdmCreate";
 			CommandHeading = "`r`n## VDM Creations Commands $($OBJ.TargetSystem)`r`n";
 			CommandString = $CMDSTR;
-			ExecutionOrder = "01"
+			ExecutionOrder = "15"
 		}
 	}
-	$SLICE = $OBJARRAY | Sort-Object -Property TargetVdm,TargetIp -Unique
+	$SLICE = $OBJARRAY | Where-Object {$_.TechRefresh -eq "YES" -and $_.TargetVdm -ne "" -and $_.TargetIp -ne ""} | Sort-Object -Property TargetVdm,TargetIp -Unique
 	ForEach ($OBJ in $SLICE) {
-		$TGTLOC = $($OBJ.ProdLocation)
-		$TGTLOCSUB = $TGTLOC.Substring(0,3)
 		$TGTSYS = $($OBJ.TargetSystem)
+		$TGTLOCSUB = $TGTSYS.Substring(0,3)
+		$TGTLOCSUB = $TGTLOCSUB.ToUpper()
 		$TGTFRAME = $TGTSYS.Substring(0,$TGTSYS.Length-1)
 		$TGTFRAMENUM = $TGTFRAME.Substring(10,4)
-		$TGTDM = $($OBJ.TargetDm)
-		$TGTDMNUM = $TGTDM.Substring(7)
-		$CMDSTR = "server_ifconfig $($OBJ.TargetDm) -create -Device fsn0 -name ${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}C0#"
+		If ($($OBJ.TargetDm)) {
+			$TGTDM = $($OBJ.TargetDm)
+			$TGTDMNUM = $TGTDM.Substring(7)
+		} Else {
+			$TGTDMNUM = "X"
+			$TGTDM = "<TARGET_DM>"
+		}
+		If ($($OBJ.TargetVdm) -like "swdvnazcif*") {
+			$ACCESSTYPE = "C"
+		} Else { $ACCESSTYPE = "N" }
+		$INTNAME = "${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}${ACCESSTYPE}0#"
+		$CMDSTR = "server_ifconfig $TGTDM -create -Device fsn0 -name $INTNAME $($OBJ.TargetIp) <NETMASK> <BROADCAST>"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -197,11 +226,14 @@ PROCESS {
 			CommandType = "prdIntCreate";
 			CommandHeading = "`r`n## Create Interface Commands $($OBJ.TargetSystem)`r`n";
 			CommandString = "$CMDSTR"
-			ExecutionOrder = "02";
-			Comments = "`r`n**The interface name should be in ALL CAPS, if not correct it before running the command**`r`n**Replace the trailing '#' with the interface number**`r`n"
+			ExecutionOrder = "14";
+			Comments = "`r`n**Review the Interface Name and correct it according to Citi standards`r`n"
 		}
 		# Generate Prod VDM Int Attach Commands
-		$CMDSTR = "nas_server -vdm $($OBJ.TargetVDM) -attach ${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}C0#"
+		$TGTVDM = $($OBJ.TargetVdm)
+		$TGTVDM = $TGTVDM.Trim()
+		$TGTVDM = $TGTVDM.ToLower()
+		$CMDSTR = "nas_server -vdm $TGTVDM -attach $INTNAME"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -209,11 +241,11 @@ PROCESS {
 			CommandType = "prdVdmAttachInt";
 			CommandHeading = "`r`n## VDM Attach Interface Commands $($OBJ.TargetSystem)`r`n";
 			CommandString = "$CMDSTR";
-			ExecutionOrder = "03";
+			ExecutionOrder = "16";
 			Comments = "`r`n**Double-check the interface name for accuracy**`r`n**Replace the trailing '#' with the interface number**`r`n"
 		}
 	}
-	$SLICE = $OBJARRAY | Sort-Object TargetSystem,TargetDrSystem -Unique
+	$SLICE = $OBJARRAY | Sort-Object TargetSystem,TargetDrSystem -Unique | Where-Object {$_.Replication -eq "Yes" -and $_.TechRefresh -eq "YES"}
 	ForEach ($OBJ in $SLICE) {
 		# Create Replication Passphrase on Source System
 		$CMDSTR = "nas_cel -create $($OBJ.TargetDrSystem) -ip <COB_CS_IP> -passphrase nasadmin"
@@ -224,8 +256,8 @@ PROCESS {
 			CommandType = "prdRepPass";
 			CommandHeading = "`r`n## Create Replication Passphrase Commands $($OBJ.TargetSystem)`r`n";
 			CommandString = "$CMDSTR"
-			ExecutionOrder = "04";
-			Comments = "`r`n**Replace the <COB_CS_IP> with the Control Station IP from the COB system**`r`n"
+			ExecutionOrder = "10";
+			Comments = "`r`n**Replace the <COB_CS_IP> with the Control Station IP from the COB system**`r`n**Stop iptables (as root): '/sbin/service iptables stop'`r`n"
 		}
 		# Create Replication Passphrase on Destination System
 		$CMDSTR = "nas_cel -create $($OBJ.TargetSystem) -ip <PRD_CS_IP> -passphrase nasadmin"
@@ -236,8 +268,8 @@ PROCESS {
 			CommandType = "drRepPass";
 			CommandHeading = "`r`n## Create Replication Passphrase Commands $($OBJ.TargetDrSystem)`r`n";
 			CommandString = "$CMDSTR"
-			ExecutionOrder = "05";
-			Comments = "`r`n**Replace the <PRD_CS_IP> with the Control Station IP from the PROD system**`r`n"
+			ExecutionOrder = "11";
+			Comments = "`r`n**Replace the <PRD_CS_IP> with the Control Station IP from the PROD system**`r`n**Stop iptables (as root): '/sbin/service iptables stop'`r`n"
 		}
 		# Create Replication Interconnect on Prod System
 		$CMDSTR = "nas_cel -interconnect -create <TGT_DM#-COB_DM#> -source_server $($OBJ.TargetDm) -destination_system $($OBJ.TargetDrSystem) -destination_server <COB_DM> -source_interfaces ip=<TGT_REP_IP> -destination_interfaces ip=<COB_REP_IP>"
@@ -248,7 +280,7 @@ PROCESS {
 			CommandType = "prdCreateInterconnect";
 			CommandHeading = "`r`n## Create Datamover Interconnection Commands $($OBJ.TargetSystem)`r`n";
 			CommandString = "$CMDSTR"
-			ExecutionOrder = "06";
+			ExecutionOrder = "12";
 			Comments = "`r`n**Replace all values in <> with their proper values**`r`n"
 		}
 		# Create Replication Interconnect on Cob(DR) System
@@ -260,23 +292,27 @@ PROCESS {
 			CommandType = "drCreateInterconnect";
 			CommandHeading = "`r`n## Create Datamover Interconnection Commands $($OBJ.TargetDrSystem)`r`n";
 			CommandString = "$CMDSTR"
-			ExecutionOrder = "07";
+			ExecutionOrder = "13";
 			Comments = "`r`n**Replace all values in <> with their proper values**`r`n"
 		}
-		# Generate PROD VDM Replication Commands
-		$CMDSTR = "nas_replicate -create $($OBJ.TargetVDM)_REP -source -vdm $($OBJ.TargetVDM) -destination -pool id=<COB_POOL_ID> -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "prdVdmRep";
-			CommandHeading = "`r`n## VDM Replication Commands $($OBJ.TargetSystem)`r`n";
-			CommandString = "$CMDSTR";
-			ExecutionOrder = "08";
-			Comments = "`r`n**Replace the all values in <> with their proper values**`r`n"
-		}
 		# Generate Cob(DR) Interface Configuration Commands
-		$CMDSTR = "server_ifconfig <COB_DM> -create -Device fsn0 -name <COB_INT_NAME> -protocol IP $($OBJ.TargetDrIp) <MASK> <BROADCAST>" 		
+		$TGTSYS = $($OBJ.TargetSystem)
+		$TGTLOCSUB = $TGTSYS.Substring(0,3)
+		$TGTLOCSUB = $TGTLOCSUB.ToUpper()
+		$TGTFRAME = $TGTSYS.Substring(0,$TGTSYS.Length-1)
+		$TGTFRAMENUM = $TGTFRAME.Substring(10,4)
+		If ($($OBJ.TargetDrDm)) {
+			$TGTDRDM = $($OBJ.TargetDrDm)
+			$TGTDMNUM = $TGTDM.Substring(7)
+		} Else {
+			$TGTDRDMNUM = "X"
+			$TGTDRDM = "<TARGET_DM>"
+		}
+		If ($($OBJ.TargetVdm) -like "swdvnazcif*") {
+			$ACCESSTYPE = "C"
+		} Else { $ACCESSTYPE = "N" }
+		$INTNAME = "${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDRDMNUM}${ACCESSTYPE}0#"
+		$CMDSTR = "server_ifconfig $TGTDRDM -create -Device fsn0 -name $INTNAME -protocol IP $($OBJ.TargetDrIp) <MASK> <BROADCAST>" 		
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -284,15 +320,34 @@ PROCESS {
 			CommandType = "drIntCreate";
 			CommandHeading = "`r`n## Create Interface Commands $($OBJ.TargetDrSystem)`r`n";
 			CommandString = "$CMDSTR";
-			ExecutionOrder = "09";
+			ExecutionOrder = "26";
 			Comments = "`r`n**Replace all values in <>.  The MASK and BROADCAST can be found from the similar interface on the system**`r`n"
 		}
 	}
-	$SLICE = $OBJARRAY | Sort-Object -Property TargetVdm,TargetVolume -Unique
+	$SLICE = $OBJARRAY | Sort-Object TargetVdm -Unique | Where-Object {$_.Replication -eq "Yes" -and $_.TechRefresh -eq "YES"}
+	ForEach ($OBJ in $SLICE) {
+		# Generate PROD VDM Replication Commands
+		$TGTVDM = $($OBJ.TargetVdm)
+		$TGTVDM = $TGTVDM.Trim()
+		$TGTVDM = $TGTVDM.ToLower()
+		$CMDSTR = "nas_replicate -create ${TGTVDM}_REP -source -vdm $TGTVDM -destination -pool id=<COB_POOL_ID> -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
+		$OUTPUT += New-Object -TypeName PSObject -Property @{
+			SourceSystem = $OBJ.SourceSystem;
+			TargetSystem = $OBJ.TargetSystem;
+			TargetDrSystem = $OBJ.TargetDrSystem;
+			CommandType = "prdVdmRep";
+			CommandHeading = "`r`n## VDM Replication Commands $($OBJ.TargetSystem)`r`n";
+			CommandString = "$CMDSTR";
+			ExecutionOrder = "17";
+			Comments = "`r`n**Replace the all values in <> with their proper values**`r`n**Restart iptables (as root):  '/sbin/service iptables start'`r`n"
+		}
+	}
+	$SLICE = $OBJARRAY | Sort-Object -Property TargetVdm,TargetVolume -Unique | Where-Object {$_.TargetVdm -ne "" -and $_.TargetVolume -ne "" -and $_.TechRefresh -eq "YES"}
 	ForEach ($OBJ in $SLICE) {
 		# Target Filesystem Creation Commands
-		# Need to detect floating points and round up.
-		$CMDSTR = "nas_fs -name $($OBJ.TargetVolume) -type uxfs -create size=$($OBJ.SourceCapacityGB)GB pool=$($OBJ.TargetStoragePool) -option slice=y"
+		$SIZE = $($OBJ.SourceCapacityGB)
+		$SIZE = [math]::Round($SIZE)
+		$CMDSTR = "nas_fs -name $($OBJ.TargetVolume) -type uxfs -create size=${SIZE}GB pool=$($OBJ.TargetStoragePool) -option slice=y"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -300,11 +355,14 @@ PROCESS {
 			CommandType = "prdFsCreate";
 			CommandHeading = "`r`n## Filesystem Creation Commands for $($OBJ.TargetSystem)`r`n";
 			CommandString = "$CMDSTR";
-			ExecutionOrder = "10";
-			Comments = "`r`n**If replicating from VNX, use the 'DR' style volume creation command**`r`n"
+			ExecutionOrder = "18";
+			Comments = ""
 		}
 		# FS Mount Commands
-		$CMDSTR = "server_mount $($OBJ.TargetVDM) $($OBJ.TargetVolume) /$($OBJ.TargetVolume)"
+		$TGTVDM = $($OBJ.TargetVdm)
+		$TGTVDM = $TGTVDM.ToLower()
+		$TGTVDM = $TGTVDM.Trim()
+		$CMDSTR = "server_mount $TGTVDM -o rw $($OBJ.TargetVolume) /$($OBJ.TargetVolume)"
         $OUTPUT += New-Object -TypeName PSObject -Property @{
 	        SourceSystem = $OBJ.SourceSystem;
 		    TargetSystem = $OBJ.TargetSystem;
@@ -312,11 +370,13 @@ PROCESS {
 		    CommandType = "prdFsMnt";
 		    CommandHeading = "`r`n## Filesystem Mount Commands $($OBJ.TargetSystem)`r`n";
 		    CommandString = "$CMDSTR";
-			ExecutionOrder = "11"
+			ExecutionOrder = "19"
         }
 		# FS Qtree Commands
-		$DMNUM = ($($OBJ.TargetDm)).Substring(7)
-		$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_<VDM_NUM>/$($OBJ.TargetVolume)/$($OBJ.TargetQtree)"
+		If ($($OBJ.TargetDm) -ne "") {
+			$DMNUM = ($($OBJ.TargetDm)).Substring(7)
+		} Else {$DMNUM = "X"}
+		$CMDSTR = "mkdir /nasmcd/quota/slot_$DMNUM/root_vdm_<VDM_ID>/$($OBJ.TargetVolume)/$($OBJ.TargetQtree)"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -324,54 +384,74 @@ PROCESS {
 			CommandType = "prdFsQtree";
 			CommandString = "$CMDSTR"
 			CommandHeading = "`r`n## Filesystem Qtree Commands $($OBJ.TargetSystem)`r`n";
-			ExecutionOrder = "16";
+			ExecutionOrder = "20";
 			Comments = "`r`n**These commands need to be run as root**`r`n"
 		} 
-		# FS Export Commands
-		$CMDSTR = "server_export $($OBJ.TargetVDM) -Protocol cifs -name $($OBJ.TargetQtree) -o netbios=$($OBJ.TargetVDM) /$($OBJ.TargetVolume)/$($OBJ.TargetQtree)"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "prdCifsExport";
-			CommandHeading = "`r`n## CIFS Export Commands $($OBJ.TargetSystem)`r`n";
-			CommandString = "$CMDSTR";
-			ExecutionOrder = "17"
+		# FS Export Commands (CIFS)
+		If ($($OBJ.AccessType) -eq "ntfs" -or $($OBJ.AccesType) -eq "mixed") {
+			$CMDSTR = "server_export $TGTVDM -Protocol cifs -name $($OBJ.TargetQtree) -o netbios=$($OBJ.TargetVDM) /$($OBJ.TargetVolume)/$($OBJ.TargetQtree)"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdCifsExport";
+				CommandHeading = "`r`n## CIFS Export Commands $($OBJ.TargetSystem)`r`n";
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "23"
+			}
 		}
-		# Cob (DR) FS Creation Commands
-		$CMDSTR = "nas_fs -name $($OBJ.TargetVolume) -create samesize=$($OBJ.TargetVolume):cel=$($OBJ.TargetSystem) pool=<COB_POOL>" 
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "drFsCreate";
-			CommandHeading = "`r`n## Filesystem Creation Commands $($OBJ.TargetDrSystem)`r`n";
-			CommandString = "$CMDSTR";
-			ExecutionOrder = "15";
-			Comments = "`r`n**Replace the <COB_POOL> with the name of the storage pool on the COB VNX**`r`n"
+		# FS  Export Commands (NFS)
+		If ($($OBJ.AccessType) -eq "Unix" -or $($OBJ.AccesType) -eq "mixed") {
+			$CMDSTR = "server_export $TGTVDM -Protocol nfs -name $($OBJ.TargetQtree) -o ro=$($OBJ.TargetVolume)_ro,rw=$($OBJ.TargetVolume)_rw,root=$($OBJ.TargetVolume)_root /$($OBJ.TargetVolume)/$($OBJ.TargetQtree)"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdNfsExport";
+				CommandHeading = "`r`n## NFS Export Commands $($OBJ.TargetSystem)`r`n";
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "24"
+			}
 		}
-		$CMDSTR = "server_mount $($OBJ.TargetVDM) -o ro $($OBJ.TargetVolume) /$($OBJ.TargetVolume)"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "drFsMnt";
-			CommandHeading = "`r`n## Filesystem Mount Commands $($OBJ.TargetDrSystem)`r`n";
-			CommandString = "$CMDSTR";
-			ExecutionOrder = "18";
-			Comments = "`r`n**Must mount FS as read-only for replication commands to work**`r`n"
+		If ($($OBJ.Replication) -eq "Yes") {
+			# Cob (DR) FS Creation Commands
+			$CMDSTR = "nas_fs -name $($OBJ.TargetVolume) -create samesize=$($OBJ.TargetVolume):cel=$($OBJ.TargetSystem) pool=$($OBJ.TargetDrStoragePool)" 
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "drFsCreate";
+				CommandHeading = "`r`n## Filesystem Creation Commands $($OBJ.TargetDrSystem)`r`n";
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "27";
+				Comments = ""
+			}
+			# Cob (DR) FS Mount COmmands
+			$CMDSTR = "server_mount $TGTVDM -o ro $($OBJ.TargetVolume) /$($OBJ.TargetVolume)"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "drFsMnt";
+				CommandHeading = "`r`n## Filesystem Mount Commands $($OBJ.TargetDrSystem)`r`n";
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "28";
+				Comments = "`r`n**Must mount FS as read-only for replication commands to work**`r`n"
+			}
+			# Filesystem Replication Commands
+			$CMDSTR = "nas_replicate -create $($OBJ.TargetVolume)_REP -source -fs $($OBJ.TargetVolume) -destination -fs $($OBJ.TargetVolume) -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdFsRep";
+				CommandHeading = "`r`n## Filesystem Replication Commands $($OBJ.TargetSystem)`r`n";
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "29";
+				Comments = "`r`n**Replace <INTERCONNECT_NAME> with the name of the datamover interconnect**`r`n"
+			}
 		}
-		$CMDSTR = "nas_replicate -create $($OBJ.TargetVolume)_REP -source -fs $($OBJ.TargetVolume) -destination -fs $($OBJ.TargetVolume) -interconnect <INTERCONNECT_NAME> -max_time_out_of_sync 10 -background"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "prdFsRep";
-			CommandHeading = "`r`n## Filesystem Replication Commands $($OBJ.TargetSystem)`r`n";
-			CommandString = "$CMDSTR";
-			ExecutionOrder = "19";
-			Comments = "`r`n**Replace <INTERCONNECT_NAME> with the name of the datamover interconnect**`r`n"
-		}
+		# Dedupe Commands
 		$CMDSTR = "fs_dedupe -modify $($OBJ.TargetVolume) -state on"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
@@ -380,21 +460,10 @@ PROCESS {
 			CommandType = "prdFsDedupe";
 			CommandHeading = "`r`n## Filesystem Deduplication Commands $($OBJ.TargetSystem)`r`n";
 			CommandString = "$CMDSTR";
-			ExecutionOrder = "20"
+			ExecutionOrder = "25"
 			Comments = "`r`n**Only run dedupe commands if dedupe is enabled on the source**`r`n"
 		}
-		$CMDSTR = "nas_ckpt_schedule -create $($OBJ.TargetVolume)_DAILY_SCHED -filesystem $($OBJ.TargetVolume) -description ""1730hrs daily checkpoint schedule for $($OBJ.TargetVolume)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:30 -keep 7"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "prdFsCkpt";
-			CommandHeading = "`r`n## Filesystem Checkpoint Commands $($OBJ.TargetSystem)`r`n";
-			CommandString = "$CMDSTR";
-			ExecutionOrder = "21";
-			Comments = "`r`n**Only run these commands after initial base copy has been completed**`r`n**Replace the <DATE> with the date which the command is executed**`n"
-		}
-		$CMDSTR = "nas_ckpt_schedule -create $($OBJ.TargetVolume)`_DAILY_SCHED -filesystem $($OBJ.TargetVolume) -description ""1710hrs daily checkpoint schedule for $($OBJ.TargetVolume)"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:10 -ckpt_name $($OBJ.TargetVolume)_ckpt_backup"
+		$CMDSTR = "nas_ckpt_schedule -create $($OBJ.TargetVolume)`_BKUP_SCHED -filesystem $($OBJ.TargetVolume) -description ""1710hrs daily checkpoint schedule for backup"" -recurrence daily -every 1 -start_on <DATE> -runtimes 17:10 -ckpt_name $($OBJ.TargetVolume)_ckpt_bkup"
 		$OUTPUT += New-Object -TypeName PSObject -Property @{
 			SourceSystem = $OBJ.SourceSystem;
 			TargetSystem = $OBJ.TargetSystem;
@@ -402,54 +471,87 @@ PROCESS {
 			CommandType = "drFsCkpt";
 			CommandHeading = "`r`n## Filesystem Checkpoint Commands $($OBJ.TargetDrSystem)`r`n";
 			CommandString = "$CMDSTR";
-			ExecutionOrder = "22";
+			ExecutionOrder = "33";
 			Comments = "`r`n**Only run these commands after tgt->cob replication has been completed**`r`n**Replace the <DATE> with the date which the command is executed**`n"
 		}
-		$CMDSTR = "emcopy64.exe \\$($OBJ.SourceVfiler)\$($OBJ.SourceVolume) \\$($OBJ.TargetVdm)\$($OBJ.TargetQtree) /s /sdd /d /o /a /secfix /i /lg /purge /r:0 /w:0 /c /log:D:\emcopy-log\$($OBJ.SourceVolume).txt"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "emcopyInc";
-			CommandHeading = "`r`n## Incremental emcopy.exe Commands`r`n";
-			CommandString = "$CMDSTR";
-			ExecutionOrder = "23"
+		If ($($OBJ.AccessType) -eq "ntfs" -or $($OBJ.AccessType) -eq "ntfs") {
+			$CMDSTR = "emcopy64.exe \\$($OBJ.SourceVfiler)\$($OBJ.SourceVolume) \\$($OBJ.TargetVdm)\$($OBJ.TargetQtree) /s /sdd /d /o /a /secfix /i /lg /purge /r:0 /w:0 /c /log:D:\emcopy-log\$($OBJ.SourceVolume).txt"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "emcopyInc";
+				CommandHeading = "`r`n## Incremental emcopy.exe Commands`r`n";
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "30"
+			}
+			$CMDSTR = "emcopy64.exe \\$($OBJ.SourceVfiler)\$($OBJ.SourceVolume) \\$($OBJ.TargetVdm)\$($OBJ.TargetQtree) /s /sdd /d /o /a /i /lg /purge /r:0 /w:0 /c /log:D:\emcopy-log\$($OBJ.SourceVolume)-final.txt"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "emcopyFin";
+				CommandHeading = "`r`n## Final emcopy.exe Commands`r`n";
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "31"
+			}
 		}
-		$CMDSTR = "emcopy64.exe \\$($OBJ.SourceVfiler)\$($OBJ.SourceVolume) \\$($OBJ.TargetVdm)\$($OBJ.TargetQtree) /s /sdd /d /o /a /i /lg /purge /r:0 /w:0 /c /log:D:\emcopy-log\$($OBJ.SourceVolume)-final.txt"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "emcopyFin";
-			CommandHeading = "`r`n## Final emcopy.exe Commands`r`n";
-			CommandString = "$CMDSTR";
-			ExecutionOrder = "24"
+		If ($($OBJ.AccessType) -eq "Unix" -or $($OBJ.AccessType) -eq "mixed") {
+			$CMDSTR = "rsync -avru --exclude:`".snapshot`" --delete /emcmigr/$($OBJ.SourceVolume)_SOURCE/ /emcmigr/$($OBJ.SourceVolume)_TARGET &>> /emcmigr/logs/$($OBJ.SourceVolume).log"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "rsync";
+				CommandHeading = "`r`n## Rsync Commands`r`n";
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "32"
+			}
 		}
 	}
-	$SLICE = $OBJARRAY | Sort-Object TargetVdm -Unique
+	$SLICE = $OBJARRAY | Sort-Object TargetVdm -Unique | Where {$_.TechRefresh -eq "YES" -and $_.TargetVdm -ne "" -and $_.TargetVdm -like "swdvnazcif*"}
 	ForEach ($OBJ in $SLICE) {
 		# Generate Prod Create CIFS Server Commands
-		$CMDSTR = "server_cifs $($OBJ.TargetCifsServer) -add compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,interface=<INT_NAME>,local_users"
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "prdCifsCreate";
-			CommandHeading = "`r`n## Create CIFS Server Commands $($OBJ.TargetSystem)`r`n";
-			CommandString = "$CMDSTR";
-			ExecutionOrder = "13";
-			Comments = "`r`n**Replace <INT_NAME> with the interface name**`r`n"
-		}
-		$CMDSTR = "server_cifs $($OBJ.TargetCifsServer) -Join compname=$($OBJ.TargetCifsServer),domain=nam.nsroot.net,admin=<ADMIN_USER>,ou=`"ou=Servers:ou=NAS:ou=INFRA`""
-		$OUTPUT += New-Object -TypeName PSObject -Property @{
-			SourceSystem = $OBJ.SourceSystem;
-			TargetSystem = $OBJ.TargetSystem;
-			TargetDrSystem = $OBJ.TargetDrSystem;
-			CommandType = "prdCifsJoin";
-			CommandHeading = "`r`n## Join CIFS Server Commands $($OBJ.TargetSystem)`r`n";
-			CommandString = "$CMDSTR";
-			ExecutionOrder = "14";
-			Comments = "`r`n**Replace the <ADMIN_USER> with a user that can add computers to the domain**`r`n"
+		If ($($OBJ.AccessType) -eq "ntfs" -or $($OBJ.AccessType) -eq "ntfs") {
+			$TGTVDM = $($OBJ.TargetVdm)
+			$TGTVDM = $TGTVDM.ToLower()
+			$TGTVDM = $TGTVDM.Trim()
+			$TGTSYS = $($OBJ.TargetSystem)
+			$TGTLOCSUB = $TGTSYS.Substring(0,3)
+			$TGTLOCSUB = $TGTLOCSUB.ToUpper()
+			$TGTFRAME = $TGTSYS.Substring(0,$TGTSYS.Length-1)
+			$TGTFRAMENUM = $TGTFRAME.Substring(10,4)
+			If ($($OBJ.TargetDm)) {
+				$TGTDM = $($OBJ.TargetDm)
+				$TGTDMNUM = $TGTDM.Substring(7)
+			} Else {
+				$TGTDMNUM = "X"
+				$TGTDM = "<TARGET_DM>"
+			}
+			$ACCESSTYPE = "C"
+			$INTNAME = "${TGTLOCSUB}${TGTFRAMENUM}DM${TGTDMNUM}${ACCESSTYPE}0#"
+			$CMDSTR = "server_cifs $TGTVDM -add compname=$TGTVDM,domain=nam.nsroot.net,interface=$INTNAME,local_users"
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdCifsCreate";
+				CommandHeading = "`r`n## Create CIFS Server Commands $($OBJ.TargetSystem)`r`n";
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "21";
+				Comments = "`r`n**Check/complete the interface name**`r`n"
+			}
+			$CMDSTR = "server_cifs $TGTVDM -Join compname=$TGTVDM,domain=nam.nsroot.net,admin=<ADMIN_USER>,ou=`"ou=Servers:ou=NAS:ou=GWIS:ou=INFRA`""
+			$OUTPUT += New-Object -TypeName PSObject -Property @{
+				SourceSystem = $OBJ.SourceSystem;
+				TargetSystem = $OBJ.TargetSystem;
+				TargetDrSystem = $OBJ.TargetDrSystem;
+				CommandType = "prdCifsJoin";
+				CommandHeading = "`r`n## Join CIFS Server Commands $($OBJ.TargetSystem)`r`n";
+				CommandString = "$CMDSTR";
+				ExecutionOrder = "22";
+				Comments = "`r`n**Replace the <ADMIN_USER> with a user that can add computers to the domain**`r`n"
+			}
 		}
 	}
 }
@@ -460,27 +562,29 @@ END {
 		TXT {	
 			$TIMESTAMP = $(Get-Date -Format yyyyMMddHHmmss)
 			New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts" -ItemType directory | Out-Null
-			$SYSTEMS = $OUTPUT | Sort-Object -Property SourceSystem,TargetSystem -Unique
+			#$SYSTEMS = $OUTPUT | Sort-Object -Property SourceSystem,TargetSystem -Unique
+			$SYSTEMS = $OUTPUT | Sort-Object -Property TargetSystem -Unique
 			$CMDBLK = "``````"
 			ForEach ($OBJ in $SYSTEMS) {
-					New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)" -ItemType directory -Force | Out-Null
+					#New-Item -Path .\ -Name ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)" -ItemType directory -Force | Out-Null
 					Write-Output "# Provisioning Script for $($OBJ.TargetSystem) & $($OBJ.TargetDrSystem)`r`n" |
-						Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\$($OBJ.TargetSystem)-$($OBJ.TargetDrSystem).txt" -Append
+						Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.TargetSystem).txt" -Append
 					Write-Output "**These commands still need to be validated by hand, as all values cannot be added programmatically**" |
-						Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\$($OBJ.TargetSystem)-$($OBJ.TargetDrSystem).txt" -Append
+						Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.TargetSystem).txt" -Append
 					Write-Output "**Run a Find for the string 'N/A' and placeholders enclosed in <>**" |
-						Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\$($OBJ.TargetSystem)-$($OBJ.TargetDrSystem).txt" -Append
+						Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.TargetSystem).txt" -Append
 			}
-			$CMDTYPES = $OUTPUT | Sort-Object -Property SourceSystem,TargetSystem,CommandType -Unique | Sort-Object -Property ExecutionOrder
+			$CMDTYPES = $OUTPUT | Sort-Object -Property ExecutionOrder -Unique
+			#$CMDTYPES = $OUTPUT | Sort-Object -Property ExecutionOrder | Sort-Object -Property TargetSystem,CommandType -Unique
 			ForEach ($OBJ in $CMDTYPES) {
-				Write-Output "$($OBJ.CommandHeading)" | Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\$($OBJ.TargetSystem)-$($OBJ.TargetDrSystem).txt" -Append
-				Write-Output "$($OBJ.Comments)" | Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\$($OBJ.TargetSystem)-$($OBJ.TargetDrSystem).txt" -Append
-				Write-Output "$CMDBLK" | Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\$($OBJ.TargetSystem)-$($OBJ.TargetDrSystem).txt" -Append
-				$ALLCMDS = $OUTPUT | Where-Object {$_.SourceSystem -eq "$($OBJ.SourceSystem)" -and $_.TargetSystem -eq "$($OBJ.TargetSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
+				Write-Output "$($OBJ.CommandHeading)" | Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.TargetSystem).txt" -Append
+				Write-Output "$($OBJ.Comments)" | Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.TargetSystem).txt" -Append
+				Write-Output "$CMDBLK" | Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.TargetSystem).txt" -Append
+				$ALLCMDS = $OUTPUT | Where-Object {$_.TargetSystem -eq "$($OBJ.TargetSystem)" -and $_.CommandType -eq "$($OBJ.CommandType)"}
 				ForEach ($CMD in $ALLCMDS) {
-					Write-Output "$($CMD.CommandString)" | Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\$($CMD.TargetSystem)-$($OBJ.TargetDrSystem).txt" -Append
+					Write-Output "$($CMD.CommandString)" | Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($CMD.TargetSystem).txt" -Append
 				}
-				Write-Output "$CMDBLK" | Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.SourceSystem)\$($OBJ.TargetSystem)-$($OBJ.TargetDrSystem).txt" -Append
+				Write-Output "$CMDBLK" | Tee-Object ".\${TIMESTAMP}_provisioning-scripts\$($OBJ.TargetSystem).txt" -Append
 				} 
 			}
 		CSV {
