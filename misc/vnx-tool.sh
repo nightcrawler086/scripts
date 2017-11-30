@@ -7,7 +7,7 @@ prdCkpts ()
 {
 
 }
-
+# not using this anymore.
 
 
 case $cmd in
