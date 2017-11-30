@@ -46,6 +46,7 @@ logger() {
 # The if statements in both iptables functions need to be
 # modified.  The status checks are pseudo, need to make the
 # if statements check the actual results of the commands
+# don't forget
 ################################################################
 iptables_stop() {
 	STATUS=`/sbin/service/iptables status`
