@@ -60,6 +60,14 @@ function output () {
 # ldapsrv = Ldap_Servers
 # ldapsrvp = Ldap_SrvPref
 
+########## TODO ##########
+#
+# "Dedupe the final host list"
+# Check if host already exists in host list
+#  If it does, don't add it again
+#
+###########################
+
 while IFS=$'\t' read srcf srcvf srcv ldape ldapng ldapsrv ldapsrvp
 do
     # Going to add our hosts to this empty array
