@@ -90,17 +90,17 @@ do
     # them into an array
     LDAPSRV=($LDAPSRV)
     LDAPSRVP=($LDAPSRVP)
-    echo "Source Filer: $SRCF"
-    echo "Source Vfiler: $SRCVF"
-    echo "Source Volume: $SRCV"
-    echo "Ldap Enabled: $LDAPE"
-    #echo "Ldap Base: $LDAPB"
-    #echo "Ldap Passwd: $LDAPP"
-    #echo "Ldap Group: $LDAPG"
-    echo "Ldap Ngroup: $LDAPNG"
-    echo "Ldap Servers 1: ${LDAPSRV[0]}"
-    echo "Ldap ServPref 1: ${LDAPSRVP[0]}"
-    sleep 3
+    #echo "Source Filer: $SRCF"
+    #echo "Source Vfiler: $SRCVF"
+    #echo "Source Volume: $SRCV"
+    #echo "Ldap Enabled: $LDAPE"
+    ##echo "Ldap Base: $LDAPB"
+    ##echo "Ldap Passwd: $LDAPP"
+    ##echo "Ldap Group: $LDAPG"
+    #echo "Ldap Ngroup: $LDAPNG"
+    #echo "Ldap Servers 1: ${LDAPSRV[0]}"
+    #echo "Ldap ServPref 1: ${LDAPSRVP[0]}"
+    #sleep 3
     # Checking if we need to query filer or vfiler or if vfiler is empty
     if [ "$srcvf" == "vfiler0" ]; then
         NFSSRV=$srcf
