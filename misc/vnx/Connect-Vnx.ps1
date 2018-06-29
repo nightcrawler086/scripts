@@ -1,10 +1,11 @@
 ﻿<#
-.Synopsis
+.SYNOPSIS
    This is a function to make then inital connection to the VNX
 .DESCRIPTION
     This function makes a connection to the VNX API and returns a
     web session.  The web session can be used for subsequent queries
-    or configurations.
+    or configurations.  The web session will be set into a global
+    variable for subsequent query/set/modify cmdlets to use
 .EXAMPLE
    PS > .\Connect-Vnx -Name <SYSTEM_NAME>
 #>
@@ -20,13 +21,9 @@ function Connect-Vnx
          [ValidateNotNullOrEmpty()]
          [string]$VNX
     )
-
     BEGIN {
-        # This disables certificate checking, so the self-signed certs dont' stop us
-        # Let's only try this after if fails to accept the certificate
-        [system.net.servicepointmanager]::Servercertificatevalidationcallback = {$true}
-
-        $CREDS = Get-Credential -Message "Enter Credentials to LOGIN into ${VNX}"
+        # Set login account into a PSCredential object
+        $CREDS = Get-Credential -Message "Enter Credentials to Login into ${VNX}"
         # Below two lines are how we retrieve the plain text version
         # of username and password
         $USER = $CREDS.GetNetworkCredential().UserName
@@ -40,7 +37,6 @@ function Connect-Vnx
         $HEADERS = @{"Content-Type" = "x-www-form-urlencoded"}
         # URL to hit for queries
         $APIURI = "https://${VNX}/servlets/CelerraManagementServices"
-
         # Standard "top" of XML Sheet
         $XMLTOP = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         # Standard format of XML Shee
@@ -49,10 +45,7 @@ function Connect-Vnx
         $XMLFORMAT = '<RequestPacket xmlns="http://www.emc.com/schemas/celerra/xml_api" >'
         # Standard beginning of a query
         $QRYBEGIN = '<Request><Query>'
-        # This is the line that tells the VNX we're querying for VDMs
-        # We can add 'Aspects' as modifiers to get different datapoints
-        # Adding 'Alias' modifiers will get use specific VDMs that meet
-        # whatever our requirements are (ID, Name, etc)
+        # Line specifying the parameters we're querying
         $QRY = "<CelerraSystemQueryParams/>"
         $QRYEND= '</Query></Request>'
         # Standard Footer for XML Sheet
@@ -61,24 +54,20 @@ function Connect-Vnx
         $BODY = $XMLTOP + $XMLFORMAT + $QRYBEGIN + $QRY + $QRYEND + $XMLFOOTER
     }
     PROCESS {
-        $ALIVE = Test-Connection -ComputerName ${VNX} -Count 2 -Quiet
-        If ($ALIVE) {
-            try {
-                $LOGIN = Invoke-WebRequest -Uri $LOGINURI -Method 'POST' -Body $BODY -SessionVariable WS
-            }
-            catch {
-                
-            }
-            If ($LOGIN.StatusCode -eq 200) {
-                
-            }
-
-            }
-            # This actually logs into the system
+        try {
+            $LOGIN = Invoke-WebRequest -Uri $LOGINURI -Method 'POST' -Body $BODY -SessionVariable WS
+        }
+        catch {
+            # This disables certificate checking, so the self-signed certs dont' stop us
+            [system.net.servicepointmanager]::Servercertificatevalidationcallback = {$true}
+        }
+        If ($LOGIN.StatusCode -eq 200) {
+            $RESPONSE = Invoke-WebRequest -Uri $APIURI -WebSession $WS -Headers $HEADERS -Body $BODY -Method Post
         }
     }
     END {
-        $global:CurrentVnxSession = $WS
+        If ($LOGIN) {
+            $global:CurrentVnxSystem = $WS
+        }
     }
 }
-Connect-Vnx
