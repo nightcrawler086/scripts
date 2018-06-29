@@ -23,6 +23,7 @@ function Connect-Vnx
 
     BEGIN {
         # This disables certificate checking, so the self-signed certs dont' stop us
+        # Let's only try this after if fails to accept the certificate
         [system.net.servicepointmanager]::Servercertificatevalidationcallback = {$true}
 
         $CREDS = Get-Credential -Message "Enter Credentials to LOGIN into ${VNX}"
