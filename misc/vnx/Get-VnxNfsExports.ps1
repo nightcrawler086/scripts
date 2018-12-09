@@ -1,6 +1,6 @@
 ﻿<#
 .Synopsis
-   Short description
+   Get NFS Exports from the VNX
 .DESCRIPTION
    Long description
 .EXAMPLE
@@ -8,7 +8,7 @@
 .EXAMPLE
    Another example of how to use this cmdlet
 #>
-function Get-VnxFileSystems
+function Get-VnxNfsExport
 {
     [CmdletBinding()]
     Param
@@ -86,7 +86,7 @@ function Get-VnxFileSystems
         #}
     }
 }
-Get-VnxFileSystems
+Get-VnxNfsExport
 
 
 # couple lines of code to use for interacting with the VNX API
