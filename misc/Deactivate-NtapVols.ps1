@@ -188,6 +188,46 @@ function nfs_backup {
     # Store the exports into objects
     # LDAP ?
 }
+<#
+.Synopsis
+    Get netstat output from filer
+.Description
+    Write netstat output from filer to file
+.Example
+    get_netstat()
+#>
+function get_netstat {
+    Param (
+        [Parameter(Mandatory=$true,
+         ValueFromPipelineByPropertyName=$True,
+         Position=0)]
+         [ValidateNotNullOrEmpty()]
+         [string]$Filer = $CurrentNaController
+    )
+    If (!$CurrentNaController) {
+        Write-Host -ForegroundColor Red "Not currently connected to any filer."
+        Exit 1
+    }
+    $STAMP = Get-Date -Format yyyMMdd-HHmmss
+    Invoke-NaSsh -Command "netstat" | Out-File -FilePath ${STAMP}_${Filer}-netstat.txt
+}
+<#
+.Synopsis
+    Parse netstat file into objects
+.Description
+    Read netstat file and parse the output
+.Example
+    parse_netstat($file)
+#>
+function get_netstat {
+    Param (
+        [Parameter(Mandatory=$true,
+         ValueFromPipelineByPropertyName=$True,
+         Position=0)]
+         [ValidateNotNullOrEmpty()]
+         [string]$File
+    )
+}
 
 
 
