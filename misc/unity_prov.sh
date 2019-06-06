@@ -24,8 +24,8 @@ LOG_WRN="WARN"
 #
 # Steps to functionalize:
 #
-# 1. Create NAS Server (PROD)
-# 2. Delete default NFS server (PROD)
+# 1. Create NAS Server (PROD) - DONE
+# 2. Delete default NFS server (PROD) - DONE
 # 3. Create Interface (PROD)
 # 4. Configure DNS (PROD)
 # 5. Create CIFS Server and Join Domain (PROD)
@@ -56,8 +56,7 @@ function log () {
     local LINE="${STAMP} | ${LEVEL} | ${MESSAGE}"
     echo ${LINE} | tee "${LOGFILE}"
 }
-
-# find command creation output (does it reply with an ID?):wq
+# Create the CIFS NAS Server
 function nas_server_create_cifs () {
     local NAME=$1
     local SP=$2
@@ -83,19 +82,18 @@ function nas_server_create_cifs () {
     # can use that and save us from running another query.
     NAS_SERVER=$(grep 'ID\s\+\=' <<< ${NAS_CREATE_RESULT} | awk -F'=' '{print $2}' | sed 's/^ *//g')
     # Delete NFS server that got created with it
-    uemcli -noHeader -sslPolicy accept -u <USER> -p <PASSWORD> /net/nas/nfs
-    -server ${NAS_SERVER} delete
+    NFS_SERVER_DEL_RESULT=$(uemcli -noHeader -sslPolicy accept -u <USER> -p <PASSWORD> /net/nas/nfs
+    -server ${NAS_SERVER} delete)
 }
+function nas_server_int_create () {
+    local IP_ADDR=$1
+    local IP_NETMASK=$2
+    local IP_GW=$3
+    local SP=$4
+    local NAS_SERVER_NAME=$5
+    FSN_DEVICES=$(uemcli -noHeader -sslPolicy accept /net/fsn show -output csv
+    -filter "SP,ID")
+    FSN=$(awk -F, -v q='"' '$1 == q"${SP}"q {print $2}' <<< $(echo ${FSN_DEVICES}))
 
 
-
-
-
-    # create nas server
-        # delete NFS server (if CIFS) 
-    # create interface
-    # configure DNS
-    # create CIFS server
-    # join domain
-    # set local admin password
-
+}
