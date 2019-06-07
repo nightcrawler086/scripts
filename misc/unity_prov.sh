@@ -33,7 +33,7 @@ LOG_WRN="WARN"
 # 7. Configure/Enable CAVA on NAS Server (PROD)
 # 8. CIFS server mapping and adding viruschecker group
 # 9. SMB Signing on NAS server
-# 10. Create NAS Server (COB)
+# 10. Create NAS Server (COB) - DONE?
 # 11. Delete default NFS server (COB)
 # 12. Set NAS Server as destination (COB)
 # 13. Create Replication for NAS Server (PROD)
@@ -48,9 +48,11 @@ LOG_WRN="WARN"
 # 22. Create Replication session for Filesystem (PROD)
 # 23. Configure CAVA with override option on NAS Server (COB)
 
+# log <MSG> <FILE> 
 function log () {
     local MESSAGE=$1
     local LOGFILE=$OUTFILE
+    # Default log level is INFO
     local LEVEL=${2:-INFO}
     local STAMP=$(date "+%Y-%m-%d %H:%M:%S")
     local LINE="${STAMP} | ${LEVEL} | ${MESSAGE}"
@@ -62,14 +64,18 @@ function nas_server_create_cifs () {
     local SP=$2
     local POOL=$3
     # Get existing pool ID
-    POOLID=$(uemcli -noHeader -sslPolicy accept /stor/config/pool -name ${POOL} show | grep 'ID\s\+\=' | awk -F'=' '{print $2}' | sed 's/^ *//g')
+    POOLID=$(uemcli -noHeader -sslPolicy accept /stor/config/pool -name ${POOL} show | grep
+    'ID\s\+\=' | awk '{print $4}')
     # Create the server
     NAS_CREATE_RESULT=$(uemcli -noHeader -sslPolicy accept -u <USER> -p
     <PASSWORD> /net/nas/server create -name ${NAME} -sp ${SP} -pool ${POOLID}
     -enablePacketReflect yes)
     if [ $? -eq 0 ]; then
-         LOG_MSG="NAS Server ${NAME} created successfully"
-         log ${LOG_MSG} 
+         NAS_SERVER_ID=$(awk '{print $3}' <<< $(echo ${NAS_CREATE_RESULT}))
+         LOG_MSG="NAS Server ${NAME} created with ID: ${NAS_SERVER_ID}"
+         log ${LOG_MSG}
+         # Return the ID of the NAS Server we created.
+         return ${NAS_SERVER_ID}
     else
         LOG_MSG="NAS Server ${NAME} failed to create with the following error"
         log "${LOG_MSG}" "${LOG_ERR}"
@@ -94,6 +100,19 @@ function nas_server_int_create () {
     FSN_DEVICES=$(uemcli -noHeader -sslPolicy accept /net/fsn show -output csv
     -filter "SP,ID")
     FSN=$(awk -F, -v q='"' '$1 == q"${SP}"q {print $2}' <<< $(echo ${FSN_DEVICES}))
-
-
+    # The below returns the ID of the interface created
+    # do we need this for anything?
+    IF_CREATE_RESULT=$(uemcli -noHeader -sslPolicy accept -u <USER> -p <PASSWORD> /net/nas/if
+    create -serverName ${NAS_SERVER_NAME} -port ${FSN} -addr ${IP_ADDR} -netmask ${IP_NETMASK}
+    -gateway ${IP_GW} -role production)
+    if [ $? -eq 0 ]; then
+         NAS_IF_ID=$(awk '{print $3}' <<< $(echo ${IF_CREATE_RESULT}))
+         LOG_MSG="Interface ${IP_ADDR} on ${NAS_SERVER_NAME} created successfully"
+         log ${LOG_MSG}
+    else
+        LOG_MSG="Interface ${IP_ADDR} failed to create on ${NAS_SERVER_NAME}"
+        log "${LOG_MSG}" "${LOG_ERR}"
+        log "${NAS_CREATE_RESULT}" "${LOG_ERR}"
+        return 1
+    fi
 }
