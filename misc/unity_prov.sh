@@ -34,7 +34,7 @@ LOG_WRN="WARN"
 # 8. CIFS server mapping and adding viruschecker group
 # 9. SMB Signing on NAS server
 # 10. Create NAS Server (COB) - DONE?
-# 11. Delete default NFS server (COB)
+# 11. Delete default NFS server (COB) - DONE?
 # 12. Set NAS Server as destination (COB)
 # 13. Create Replication for NAS Server (PROD)
 # 14. Set interface with "overridden" option (COB)
@@ -60,6 +60,14 @@ function log () {
 }
 # Create the CIFS NAS Server
 function nas_server_create_cifs () {
+    # This will test to see if the NAS Server exists already
+    EXIST=$(uemcli -noHeader -sslPolicy accept /net/nas/server -name $1
+    show)
+    if [ $? -eq 0 ]; then
+         LOG_MSG="NAS Server '${NAME}' already exists!"
+         log ${LOG_MSG}
+         return 1
+    fi
     local NAME=$1
     local SP=$2
     local POOL=$3
@@ -74,8 +82,6 @@ function nas_server_create_cifs () {
          NAS_SERVER_ID=$(awk '{print $3}' <<< $(echo ${NAS_CREATE_RESULT}))
          LOG_MSG="NAS Server ${NAME} created with ID: ${NAS_SERVER_ID}"
          log ${LOG_MSG}
-         # Return the ID of the NAS Server we created.
-         return ${NAS_SERVER_ID}
     else
         LOG_MSG="NAS Server ${NAME} failed to create with the following error"
         log "${LOG_MSG}" "${LOG_ERR}"
@@ -86,12 +92,36 @@ function nas_server_create_cifs () {
     # There seems to be an ID for each object, and a internal server ID
     # the internal server ID gets returned when the server is created, so we
     # can use that and save us from running another query.
-    NAS_SERVER=$(grep 'ID\s\+\=' <<< ${NAS_CREATE_RESULT} | awk -F'=' '{print $2}' | sed 's/^ *//g')
+    NAS_SERVER_NFS_ID=$(uemcli -noHeader -sslPolicy accept /net/nas/nfs
+    -serverName ${NAME} show | grep 'ID\s\+\=' | awk '{print $4}')
     # Delete NFS server that got created with it
     NFS_SERVER_DEL_RESULT=$(uemcli -noHeader -sslPolicy accept -u <USER> -p <PASSWORD> /net/nas/nfs
-    -server ${NAS_SERVER} delete)
+    -id ${NAS_SERVER_NFS_ID} delete)
+    if [ $? -eq 0 ]; then
+         LOG_MSG="NFS Server on '${NAME}' with ID '${NAS_SERVER_NFS_ID}' was
+         deleted successfully"
+         log ${LOG_MSG}
+    else
+        LOG_MSG="Failed to delete NFS server with ID '${NAS_SERVER_NFS_ID}' on
+        '${NAME}' "
+        log "${LOG_MSG}" "${LOG_ERR}"
+        log "${NAS_CREATE_RESULT}" "${LOG_ERR}"
+        return 1
+    fi
+    # Return the ID of the NAS Server we created.
+    return ${NAS_SERVER_ID}
 }
 function nas_server_int_create () {
+    # This will test to see if the interface exists already
+    EXIST=$(uemcli -noHeader -sslPolicy accept /net/nas/if -serverName $5
+    show -output csv -filter "ID,IP Address")
+    if [ $? -eq 0 ]; then
+         LOG_MSG="NAS Server '${5}' already exists!"
+         log ${LOG_MSG}
+         EXISTING_IF_ID=$(awk -F, -v q='"' '$5 == q"${1}"q" {print $1}' <<<
+         $(echo ${EXIST}))
+         
+    fi
     local IP_ADDR=$1
     local IP_NETMASK=$2
     local IP_GW=$3
@@ -116,3 +146,32 @@ function nas_server_int_create () {
         return 1
     fi
 }
+function fs_create () {
+    # First thing is what you need call the function
+    # What data do you need?
+    # 
+    # Filesystem name
+    # NAS Server (ID)
+    # Storage Pool (ID)
+    # FS Size (GB)
+    # 
+    # check for existin FS by the same name?
+    # check space storage pool?
+    # nas server ID?
+    # if ^ that checks out
+    #   create fs
+    # store FS ID?
+}
+
+
+
+while read <Inputfile> servername pool sp ip sm gw 
+    vdm,sp,ip,netmask,gw,fs,fssize,
+do 
+    create server
+        nas_server_create_cifs ${servername} ${pool} ${sp}
+    filesystem
+    ip
+    replication
+    etc
+done < $file
