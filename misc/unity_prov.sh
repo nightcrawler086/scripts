@@ -95,7 +95,7 @@ function nas_server_create_cifs () {
     NAS_SERVER_NFS_ID=$(uemcli -noHeader -sslPolicy accept /net/nas/nfs
     -serverName ${NAME} show | grep 'ID\s\+\=' | awk '{print $4}')
     # Delete NFS server that got created with it
-    NFS_SERVER_DEL_RESULT=$(uemcli -noHeader -sslPolicy accept -u <USER> -p <PASSWORD> /net/nas/nfs
+    NFS_SERVER_DEL_RESULT=$(uemcli -noHeader -sslPolicy accept /net/nas/nfs
     -id ${NAS_SERVER_NFS_ID} delete)
     if [ $? -eq 0 ]; then
          LOG_MSG="NFS Server on '${NAME}' with ID '${NAS_SERVER_NFS_ID}' was
@@ -118,9 +118,7 @@ function nas_server_int_create () {
     if [ $? -eq 0 ]; then
          LOG_MSG="NAS Server '${5}' already exists!"
          log ${LOG_MSG}
-         EXISTING_IF_ID=$(awk -F, -v q='"' '$5 == q"${1}"q" {print $1}' <<<
-         $(echo ${EXIST}))
-         
+         EXISTING_IF_ID=$(awk -F, -v q='"' '$5 == q"${1}"q" {print $1}' <<< $(echo ${EXIST}))
     fi
     local IP_ADDR=$1
     local IP_NETMASK=$2
@@ -132,7 +130,7 @@ function nas_server_int_create () {
     FSN=$(awk -F, -v q='"' '$1 == q"${SP}"q {print $2}' <<< $(echo ${FSN_DEVICES}))
     # The below returns the ID of the interface created
     # do we need this for anything?
-    IF_CREATE_RESULT=$(uemcli -noHeader -sslPolicy accept -u <USER> -p <PASSWORD> /net/nas/if
+    IF_CREATE_RESULT=$(uemcli -noHeader -sslPolicy accept /net/nas/if
     create -serverName ${NAS_SERVER_NAME} -port ${FSN} -addr ${IP_ADDR} -netmask ${IP_NETMASK}
     -gateway ${IP_GW} -role production)
     if [ $? -eq 0 ]; then
@@ -146,32 +144,79 @@ function nas_server_int_create () {
         return 1
     fi
 }
-function fs_create () {
-    # First thing is what you need call the function
-    # What data do you need?
-    # 
-    # Filesystem name
-    # NAS Server (ID)
-    # Storage Pool (ID)
-    # FS Size (GB)
-    # 
-    # check for existin FS by the same name?
-    # check space storage pool?
-    # nas server ID?
-    # if ^ that checks out
-    #   create fs
-    # store FS ID?
+function set_dns () {
+    local NAS_SERVER_ID=$1
+    local DOMAIN=$2
+    local DNS_SERVER_STR=$3
+    # First check to see if it's already configured
+    $EXIST=$(uemcli -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} show)
+    #
+    # If block to test result
+    #
+    $SET_DNS_RESULT=$(uemcli -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} set
+    -name ${DOMAIN} ${DNS_SERVER_STR})
+    #
+    # Test result of above command
+    #
 }
-
-
-
-while read <Inputfile> servername pool sp ip sm gw 
-    vdm,sp,ip,netmask,gw,fs,fssize,
-do 
-    create server
-        nas_server_create_cifs ${servername} ${pool} ${sp}
-    filesystem
-    ip
-    replication
-    etc
-done < $file
+function cifs_server_create () {
+    local NAS_SERVER=$1
+    local CIFS_SERVER=$2
+    local NETBIOS=$3
+    local DOMAIN=$4
+    local USER=$5
+    local OU=$6
+    $EXIST=$(uemcli -noHeader -sslPolicy accept /net/nas/cifs -name ${NAS_SERVER} show)
+    #
+    # Test value and proceed if it doesn't exist
+    #
+    $CIFS_SERVER_CREATE=$(uemcli -noHeader -sslPolicy accept /net/nas/cifs create -serverName
+    ${NAS_SERVER} -name ${CIFS_SERVER} -netbiosName ${NETBIOS} -domain ${DOMAIN} -username ${USER}
+    -passwdSecure -orgUnit ${OU})
+    #
+    # Test the result for success
+    #
+}
+function set_cava () {
+    local NAS_SERVER_ID=$1
+    local CAVA_CONFIG_FILE=$2
+    # First test to be sure the file exists
+    [ ! -f $CAVA_CONFIG_FILE ] && { log "Could not fine CAVA configuration file $CAVA_CONFIG_File"; exit 99; }
+    # need to download the file, compare to the required config
+    # edit if necessary
+    # then upload
+    CAVA_CONFIG=$(uemcli -noHeader -sslPolicy accept -upload f ${CAVA_CONFIG_FILE}
+    /net/nas/cava -server ${NAS_SERVER_ID} -type config)
+    # Test result for success
+}
+function set_nas_server_dest () {
+    local NAS_SERVER_NAME=$1
+    # Test if server exists
+    # Test if it's already a destination
+    # configure if not
+    SET_DST_RESULT=$(uemcli -noHeader -sslPolicy accept /net/nas/server -name ${NAS_SERVER_NAME}
+    set -replDest yes)
+    #
+    # test result
+}
+function nas_server_rep () {
+    # Don't think I can do this, can we call a remote system?
+    local SRC_NAS_SERVER=$1
+    local DST_NAS_
+}
+function set_int_override () {
+    local NAS_SERVER=$1
+    # I think all of the properties we need can be queried
+    # since the interface should already exist:
+    #
+    # NAS Server SP?
+    #   This would be to get the FSN port from the right SP
+    # Interface ID
+    # FSN Port ID
+    # IP Address
+    # Netmask
+    # Gateway
+    #
+    RES=$(uemcli -noHeaer -sslPolicy accept /net/nas/if -id ${INT_ID} set -port ${FSN} -addr
+    ${IP_ADDR -netmask ${IP_MASK} -gateway ${IP_GW} -replSync overridden})
+}
