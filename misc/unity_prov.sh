@@ -20,7 +20,7 @@ LOG_WRN="WARN"
 # Username ?
 # Password ?
 #
-# TODO 
+# TODO
 #
 # Steps to functionalize:
 #
@@ -219,4 +219,29 @@ function set_int_override () {
     #
     RES=$(uemcli -noHeaer -sslPolicy accept /net/nas/if -id ${INT_ID} set -port ${FSN} -addr
     ${IP_ADDR -netmask ${IP_MASK} -gateway ${IP_GW} -replSync overridden})
+}
+function fs_create () {
+    local NAME=$1
+    local NAS_SERVER=$2
+    local POOL=$3
+    local SIZE=$4
+    local TYPE=$5
+    # Does FS exist?
+    EXIST=$(uemcli -noHeader -sslPolicy accept /stor/prov/fs -name ${NAME} show)
+    if [ $? -eq 0 ]; then
+         LOG_MSG="The filesystem '${NAME}' already exists!"
+         log ${LOG_MSG} ${LOG_ERR}
+         return 1
+    else
+        LOG_MSG="The filesystem '${NAME}' does not exist yet."
+        log "${LOG_MSG}"
+        POOL_SUB=$(uemcli -noHeader -sslPolicy accept /stor/config/pool show| grep Subscription | awk '{print $4}')
+        if (( ${POOL_SUB%\%*} >= 100 )); then
+            # Pool is oversubscribed, do not create
+            LOG_MSG="This NAS is already 100% subscribed or more.  Cannot create any more
+            filesystems"
+            log ${LOG_MSG} ${LOG_ERR}
+        fi
+    fi
+    # check pool subscription percentage
 }
