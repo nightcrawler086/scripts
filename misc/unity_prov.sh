@@ -222,10 +222,18 @@ function set_int_override () {
 }
 function fs_create () {
     local NAME=$1
-    local NAS_SERVER=$2
+    local NAS_SERVER_ID=$2
     local POOL=$3
+    # Size is always expected in GB
     local SIZE=$4
     local TYPE=$5
+    # Let's check to be sure the FS size isn't too crazy
+    if (( ${SIZE} > 1024 )); then
+        LOG_MSG="Filesystem size specified is ${SIZE}GB, this is too large to
+        create"
+        log ${LOG_MSG} ${LOG_ERR}
+        return 1
+    fi
     # Does FS exist?
     EXIST=$(uemcli -noHeader -sslPolicy accept /stor/prov/fs -name ${NAME} show)
     if [ $? -eq 0 ]; then
@@ -235,13 +243,32 @@ function fs_create () {
     else
         LOG_MSG="The filesystem '${NAME}' does not exist yet."
         log "${LOG_MSG}"
+        # the following few lines will check the subscription percentage of the
+        # pool, and if the pool is 100% subscribed or more, we will not create
+        # the filesystem.  However, I cannot check the filesystem will make the
+        # pool more than 100% subscribed (not enough math binaries on the
+        # system)
         POOL_SUB=$(uemcli -noHeader -sslPolicy accept /stor/config/pool show| grep Subscription | awk '{print $4}')
         if (( ${POOL_SUB%\%*} >= 100 )); then
             # Pool is oversubscribed, do not create
             LOG_MSG="This NAS is already 100% subscribed or more.  Cannot create any more
             filesystems"
             log ${LOG_MSG} ${LOG_ERR}
+        else
+            LOG_MSG="The pool is currently ${POOL_SUB} subscribed, continuing
+            with filesystem creation"
+            log ${LOG_MSG}
+            # Create Filesystem
+            FS_CREATE=$(uemcli -noHeader -sslPolicy accept /stor/prov/fs create
+            -name ${NAME} -server ${NAS_SERVER_ID} -pool ${POOL_ID} -size
+            ${SIZE}G -dataReduction yes -advnacedDedupe yes -type ${TYPE})
+            if [ $? -eq 0 ]; then
+                 LOG_MSG="The filesystem '${NAME}' was created successfully!"
+                 log ${LOG_MSG}
+            else
+                LOG_MSG="The filesystem '${NAME}' failed to create."
+                log "${LOG_MSG}" "${LOG_ERR}"
+                fi
+            fi
         fi
-    fi
-    # check pool subscription percentage
 }
