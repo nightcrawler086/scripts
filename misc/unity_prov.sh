@@ -272,8 +272,8 @@ function fs_create () {
 }
 
 
-while IFS=, read filer sp server fs size type ip mask gw; do
-    UNITY=${filer//\"/}
+while IFS=, read filer sp server fs size type ip mask gw cob_filer; do
+    PROD_UNITY=${filer//\"/}
     SP=${sp//\"/}
     NAS_SERVER=${server//\"/}
     FS=${fs//\"/}
@@ -282,11 +282,12 @@ while IFS=, read filer sp server fs size type ip mask gw; do
     IP_ADDR=${ip//\"/}
     IP_MASK=${mask//\"/}
     IP_GW=${gw//\"/}
+    COB_UNITY=${gw//\"/}
     # Get the pool ID for use will all the commands
-    POOL_ID=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/config/pool show | grep 'ID\s\+\=' | awk '{print $4}')
+    POOL_ID=$(uemcli -d ${PROD_UNITY} -noHeader -sslPolicy accept /stor/config/pool show | grep 'ID\s\+\=' | awk '{print $4}')
     # Get FSN devices from each SP
     # Is this going to work?  Doesn't seem to read line-by-line
-    #FSN_DEVICES=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/fsn show -output csv -filter "SP,ID")
+    #FSN_DEVICES=$(uemcli -d ${PROD_UNITY} -noHeader -sslPolicy accept /net/fsn show -output csv -filter "SP,ID")
     #SPA_FSN=$(awk -F, -v q='"' '$1 == q"spa"q {print $2}' <<< $(echo ${FSN_DEVICES}))
     #SPB_FSN=$(awk -F, -v q='"' '$1 == q"spb"q {print $2}' <<< $(echo ${FSN_DEVICES}))
 
@@ -294,7 +295,7 @@ while IFS=, read filer sp server fs size type ip mask gw; do
     # then create if it doesn't
     # slice the input file based on the NAS server
     # for loop for all filesystems
-    NAS_SERVER_ID=$(nas_server_create_cifs "${UNITY}" "${NAS_SERVER}"
+    NAS_SERVER_ID=$(nas_server_create_cifs "${PROD_UNITY}" "${NAS_SERVER}"
     "${SP}" "${POOL_ID}")
     echo "returned nas server id:  ${NAS_SERVER_ID}"
 
