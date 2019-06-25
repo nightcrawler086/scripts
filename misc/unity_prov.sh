@@ -13,7 +13,6 @@ LOG_ERR="ERROR"
 LOG_WRN="WARN"
 # Check if the input file exists
 [ ! -f $FILE ] && { echo "$FILE file not found"; exit 99; }
-
 # Variables required:
 # POOL Name or ID
 # SP
@@ -123,14 +122,11 @@ function nas_server_int_create () {
     local IP_GW=$3
     local SP=$4
     local NAS_SERVER_NAME=$5
-    FSN_DEVICES=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/fsn show -output csv
-    -filter "SP,ID")
+    FSN_DEVICES=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/fsn show -output csv -filter "SP,ID")
     FSN=$(awk -F, -v q='"' '$1 == q"${SP}"q {print $2}' <<< $(echo ${FSN_DEVICES}))
     # The below returns the ID of the interface created
     # do we need this for anything?
-    IF_CREATE_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/if
-    create -serverName ${NAS_SERVER_NAME} -port ${FSN} -addr ${IP_ADDR} -netmask ${IP_NETMASK}
-    -gateway ${IP_GW} -role production)
+    IF_CREATE_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/if create -serverName ${NAS_SERVER_NAME} -port ${FSN} -addr ${IP_ADDR} -netmask ${IP_NETMASK} -gateway ${IP_GW} -role production)
     if [ $? -eq 0 ]; then
          NAS_IF_ID=$(awk '{print $3}' <<< $(echo ${IF_CREATE_RESULT}))
          LOG_MSG="Interface ${IP_ADDR} on ${NAS_SERVER_NAME} created successfully"
@@ -151,8 +147,7 @@ function set_dns () {
     #
     # If block to test result
     #
-    $SET_DNS_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} set
-    -name ${DOMAIN} ${DNS_SERVER_STR})
+    $SET_DNS_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} set -name ${DOMAIN} ${DNS_SERVER_STR})
     #
     # Test result of above command
     #
@@ -168,9 +163,7 @@ function cifs_server_create () {
     #
     # Test value and proceed if it doesn't exist
     #
-    $CIFS_SERVER_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/cifs create -serverName
-    ${NAS_SERVER} -name ${CIFS_SERVER} -netbiosName ${NETBIOS} -domain ${DOMAIN} -username ${USER}
-    -passwdSecure -orgUnit ${OU})
+    $CIFS_SERVER_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/cifs create -serverName ${NAS_SERVER} -name ${CIFS_SERVER} -netbiosName ${NETBIOS} -domain ${DOMAIN} -username ${USER} -passwdSecure -orgUnit ${OU})
     #
     # Test the result for success
     #
@@ -257,9 +250,7 @@ function fs_create () {
             with filesystem creation"
             log "${LOG_MSG}"
             # Create Filesystem
-            FS_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/prov/fs create
-            -name ${NAME} -server ${NAS_SERVER_ID} -pool ${POOL_ID} -size
-            ${SIZE}G -dataReduction yes -advnacedDedupe yes -type ${TYPE})
+            FS_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/prov/fs create -name ${NAME} -server ${NAS_SERVER_ID} -pool ${POOL_ID} -size ${SIZE}G -dataReduction yes -advnacedDedupe yes -type ${TYPE})
             if [ $? -eq 0 ]; then
                  LOG_MSG="The filesystem '${NAME}' was created successfully!"
                  log "${LOG_MSG}"
@@ -270,8 +261,12 @@ function fs_create () {
             fi
         fi
 }
+# Slice the files we need to read 
+# Unique NAS Servers first
+awk -F, '!seen[$3]++' $INFILE >> ${STAMP}_unity-nas-servers.tmp
+$NAS_SERVERS="${STAMP}_unity_nas_servers.tmp"
 
-
+# Outer loop...this where we execute NAS Server operations
 while IFS=, read filer sp server fs size type ip mask gw cob_filer; do
     PROD_UNITY=${filer//\"/}
     SP=${sp//\"/}
@@ -295,9 +290,28 @@ while IFS=, read filer sp server fs size type ip mask gw cob_filer; do
     # then create if it doesn't
     # slice the input file based on the NAS server
     # for loop for all filesystems
-    NAS_SERVER_ID=$(nas_server_create_cifs "${PROD_UNITY}" "${NAS_SERVER}"
-    "${SP}" "${POOL_ID}")
+    NAS_SERVER_ID=$(nas_server_create_cifs "${PROD_UNITY}" "${NAS_SERVER}" "${SP}" "${POOL_ID}")
     echo "returned nas server id:  ${NAS_SERVER_ID}"
+    
 
 
-done < $INFILE
+
+    # Cut out the unique filesystems from the input file
+    awk -F, '$3 == $server' $INFILE > ${STAMP}_unity-nas-filesystems.tmp
+    FILESYSTEMS="${STAMP}_unity-nas-filesystems.tmp"
+    # Inner loop, for filesystem level oeprations.
+    while IFS=, read filer sp server fs size type ip mask gw cob_filer; do
+        PROD_UNITY=${filer//\"/}
+        SP=${sp//\"/}
+        NAS_SERVER=${server//\"/}
+        FS=${fs//\"/}
+        FS_SIZE=${size//\"/}
+        FS_TYPE=${type//\"/}
+        IP_ADDR=${ip//\"/}
+        IP_MASK=${mask//\"/}
+        IP_GW=${gw//\"/}
+        COB_UNITY=${gw//\"/}
+
+    done <<< $(cat $FILESYSTEMS)
+
+done < $(cat $NAS_SERVERS)
