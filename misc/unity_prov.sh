@@ -77,7 +77,8 @@ function nas_server_create_cifs () {
     # Create the server
     LOG_MSG="Attempting to create NAS Server '${NAS_SERVER_NAME}'"
     log "${LOG_MSG}"
-    NAS_CREATE_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/server create -name ${NAS_SERVER_NAME} -sp ${SP} -pool ${POOL_ID} -enablePacketReflect yes)
+    NAS_CREATE_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/server create \
+        -name ${NAS_SERVER_NAME} -sp ${SP} -pool ${POOL_ID} -enablePacketReflect yes)
     if [ $? -eq 0 ]; then
          NAS_SERVER_ID=$(awk '{print $3}' <<< $(echo ${NAS_CREATE_RESULT}))
          LOG_MSG="NAS Server ${NAS_SERVER_NAME} created with ID: ${NAS_SERVER_ID}"
@@ -92,7 +93,8 @@ function nas_server_create_cifs () {
     # There seems to be an ID for each object, and a internal server ID
     # the internal server ID gets returned when the server is created, so we
     # can use that and save us from running another query.
-    NAS_SERVER_NFS_ID=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/nfs -serverName ${NAS_SERVER_NAME} show | grep 'ID\s\+\=' | awk '{print $4}')
+    NAS_SERVER_NFS_ID=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/nfs \
+        -serverName ${NAS_SERVER_NAME} show | grep 'ID\s\+\=' | awk '{print $4}')
     # Delete NFS server that got created with it
     NFS_SERVER_DEL_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/nfs -id ${NAS_SERVER_NFS_ID} delete)
     if [ $? -eq 0 ]; then
@@ -126,7 +128,8 @@ function nas_server_int_create () {
     FSN=$(awk -F, -v q='"' '$1 == q"${SP}"q {print $2}' <<< $(echo ${FSN_DEVICES}))
     # The below returns the ID of the interface created
     # do we need this for anything?
-    IF_CREATE_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/if create -serverName ${NAS_SERVER_NAME} -port ${FSN} -addr ${IP_ADDR} -netmask ${IP_NETMASK} -gateway ${IP_GW} -role production)
+    IF_CREATE_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/if create -serverName \
+        ${NAS_SERVER_NAME} -port ${FSN} -addr ${IP_ADDR} -netmask ${IP_NETMASK} -gateway ${IP_GW} -role production)
     if [ $? -eq 0 ]; then
          NAS_IF_ID=$(awk '{print $3}' <<< $(echo ${IF_CREATE_RESULT}))
          LOG_MSG="Interface ${IP_ADDR} on ${NAS_SERVER_NAME} created successfully"
@@ -147,7 +150,8 @@ function set_dns () {
     #
     # If block to test result
     #
-    $SET_DNS_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} set -name ${DOMAIN} ${DNS_SERVER_STR})
+    $SET_DNS_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns \
+        -server ${NAS_SERVER_ID} set -name ${DOMAIN} ${DNS_SERVER_STR})
     #
     # Test result of above command
     #
@@ -163,7 +167,8 @@ function cifs_server_create () {
     #
     # Test value and proceed if it doesn't exist
     #
-    $CIFS_SERVER_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/cifs create -serverName ${NAS_SERVER} -name ${CIFS_SERVER} -netbiosName ${NETBIOS} -domain ${DOMAIN} -username ${USER} -passwdSecure -orgUnit ${OU})
+    $CIFS_SERVER_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/cifs create-serverName ${NAS_SERVER} -name \
+        ${CIFS_SERVER} -netbiosName ${NETBIOS} -domain ${DOMAIN} -username ${USER} -passwdSecure -orgUnit ${OU})
     #
     # Test the result for success
     #
@@ -176,8 +181,7 @@ function set_cava () {
     # need to download the file, compare to the required config
     # edit if necessary
     # then upload
-    CAVA_CONFIG=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept -upload f ${CAVA_CONFIG_FILE}
-    /net/nas/cava -server ${NAS_SERVER_ID} -type config)
+    CAVA_CONFIG=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept -upload f ${CAVA_CONFIG_FILE} /net/nas/cava -server ${NAS_SERVER_ID} -type config)
     # Test result for success
 }
 function set_nas_server_dest () {
@@ -208,8 +212,8 @@ function set_int_override () {
     # Netmask
     # Gateway
     #
-    RES=$(uemcli -noHeaer -sslPolicy accept /net/nas/if -id ${INT_ID} set -port ${FSN} -addr
-    ${IP_ADDR -netmask ${IP_MASK} -gateway ${IP_GW} -replSync overridden})
+    RES=$(uemcli -noHeaer -sslPolicy accept /net/nas/if -id ${INT_ID} set \
+        -port ${FSN} -addr ${IP_ADDR} -netmask ${IP_MASK} -gateway ${IP_GW} -replSync overridden})
 }
 function fs_create () {
     local NAME=$1
@@ -250,7 +254,8 @@ function fs_create () {
             with filesystem creation"
             log "${LOG_MSG}"
             # Create Filesystem
-            FS_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/prov/fs create -name ${NAME} -server ${NAS_SERVER_ID} -pool ${POOL_ID} -size ${SIZE}G -dataReduction yes -advnacedDedupe yes -type ${TYPE})
+            FS_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/prov/fs create -name ${NAME} -server \
+                ${NAS_SERVER_ID} -pool ${POOL_ID} -size ${SIZE}G -dataReduction yes -advnacedDedupe yes -type ${TYPE})
             if [ $? -eq 0 ]; then
                  LOG_MSG="The filesystem '${NAME}' was created successfully!"
                  log "${LOG_MSG}"
