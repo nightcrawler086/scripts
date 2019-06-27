@@ -441,6 +441,21 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; d
 	SEC_STYLE=${AC//\"/}
 	echo "Variables inside the Filesystem loop"
 	echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} |${COB_UNITY}"
-	$CURRENT_NAS_SERVER_ID=$(get_nas_server_id "${PROD_UNITY}" "${NAS_SERVER}")
+    if [ "$CURRENT_NAS_SERVER" == "$NAS_SERVER" ]; then
+        # No need to go get its ID, since we already have it in the loop
+        LOG_MSG="Already have NAS Server ID for '${NAS_SERVER}': '${CURRENT_NAS_SERVER_ID}'"
+        log "${LOG_MSG}"
+    else
+        # The current NAS Server doesn't match this row, so we'll need to query
+	    CURRENT_NAS_SERVER_ID=$(get_nas_server_id "${PROD_UNITY}" "${NAS_SERVER}")
+        if [ $? -eq 0 ]; then
+            LOG_MSG="Found NAS Server for '${NAS_SERVER}': '${CURRENT_NAS_SERVER_ID}'"
+            log "${LOG_MSG}"
+        else
+            LOG_MSG="Could not get ID for NAS Server '${NAS_SERVER}'.  Does it exist?"
+            log "${LOG_MSG}" "${LOG_ERR}"
+        fi
+    fi
+
 	
 done < $INFILE
