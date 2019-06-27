@@ -2,6 +2,8 @@
 
 # Input File
 INFILE=$1
+# Make sure we can find the file
+[ ! -f $INFILE ] && { echo "$FILE file not found"; exit 99; }
 # Datestamp
 STAMP=$(date +%Y-%m-%d-%H%M%S)
 # Log file
@@ -11,15 +13,10 @@ OUTFILE="${STAMP}_unity-prov-log.txt"
 LOG_DEF="INFO"
 LOG_ERR="ERROR"
 LOG_WRN="WARN"
-# Check if the input file exists
-[ ! -f $FILE ] && { echo "$FILE file not found"; exit 99; }
-# Variables required:
-# POOL Name or ID
-# SP
-# Server Name
-# Username ?
-# Password ?
-#
+# Default Domain for CIFS servers is NAM
+DEF_DOMAIN="nam.nsroot.net"
+# Default OU is the NAS Team's OU
+DEF_OU="OU=Servers,OU=NAS,OU=GWIS,OU=INFRA"
 # TODO
 #
 # Steps to functionalize:
@@ -58,7 +55,7 @@ function log () {
     local LINE="${STAMP} | ${LEVEL} | ${MESSAGE}"
     echo ${LINE} | tee "${LOGFILE}"
 }
-# Create the CIFS NAS Server
+# Create the NAS Server
 function nas_server_create_cifs () {
     local UNITY=$1
     local NAS_SERVER_NAME=$2
@@ -94,7 +91,7 @@ function nas_server_create_cifs () {
     # the internal server ID gets returned when the server is created, so we
     # can use that and save us from running another query.
     NAS_SERVER_NFS_ID=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/nfs \
-        -serverName ${NAS_SERVER_NAME} show | grep 'ID\s\+\=' | awk '{print $4}')
+        -serverName ${NAS_SERVER_NAME} show | awk 'NR==1{print $4}')
     # Delete NFS server that got created with it
     NFS_SERVER_DEL_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/nfs -id ${NAS_SERVER_NFS_ID} delete)
     if [ $? -eq 0 ]; then
@@ -181,21 +178,41 @@ function set_dns () {
     #
 }
 function cifs_server_create () {
-    local NAS_SERVER=$1
-    local CIFS_SERVER=$2
-    local NETBIOS=$3
-    local DOMAIN=$4
-    local USER=$5
-    local OU=$6
+    # cifs_server_create { ${UNITY} ${NAS_SERVER} ${USER} } [ ${CIFS_SERVER} ${NETBIOS} ${DOMAIM} ${OU} ]
+    local UNITY=$1
+    local NAS_SERVER=$2
+    local USER=$3
+    # By default the CIFS server name and the NETBIOS name will match the NAS Server Name
+    # These variables can be overridden by passing their values explicitly to the function
+    local CIFS_SERVER=${4:-${2}}
+    local NETBIOS=${5:-${2}}
+    # Default value is set at top of script
+    local DOMAIN=${6:-${DEF_DOMAIN}}
+    # Default value is set at top of script
+    local OU=${7:-${DEF_OU}}
     $EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/cifs -name ${NAS_SERVER} show)
-    #
-    # Test value and proceed if it doesn't exist
-    #
-    $CIFS_SERVER_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/cifs create-serverName ${NAS_SERVER} -name \
-        ${CIFS_SERVER} -netbiosName ${NETBIOS} -domain ${DOMAIN} -username ${USER} -passwdSecure -orgUnit ${OU})
-    #
-    # Test the result for success
-    #
+    if [ $? -eq 0 ]; then
+        # The awk statement here is untested
+        CIFS_SERVER_ID=$(awk '{print $3}' <<< $(echo ${EXIST}))
+        LOG_MSG="A CIFS server for '${NAS_SERVER}' already exists"
+        log "${LOG_MSG}" "${LOG_WRN}"
+		return 2
+    else
+        LOG_MSG="Could not find an existing CIFS Server for '${NAS_SERVER}'.  Attempting to create."
+        log "${LOG_MSG}"
+        $CIFS_SERVER_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/cifs create-serverName ${NAS_SERVER} -name \
+            ${CIFS_SERVER} -netbiosName ${NETBIOS} -domain ${DOMAIN} -username ${USER} -passwdSecure -orgUnit ${OU})
+        if [ $? -eq 0 ]; then
+            LOG_MSG="CIFS Server '${CIFS_SERVER}' created successfully on NAS Server '${NAS_SERVER}'"
+            log "${LOG_MSG}"
+            # awk out the ID of the CIFS server
+            echo ${CIFS_SERVER_ID}
+        else
+            LOG_MSG="Failed to create CIFS Server '${CIFS_SERVER}' on NAS Server '${NAS_SERVER}'"
+            log "${LOG_MSG}" "${LOG_ERR}"
+            return 1
+        fi
+    fi
 }
 function set_cava () {
     local NAS_SERVER_ID=$1
@@ -209,19 +226,22 @@ function set_cava () {
     # Test result for success
 }
 function set_nas_server_dest () {
-    local NAS_SERVER_NAME=$1
-    # Test if server exists
-    # Test if it's already a destination
-    # configure if not
-    SET_DST_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/server -name ${NAS_SERVER_NAME}
-    set -replDest yes)
-    #
-    # test result
+    local UNITY=$1
+    local NAS_SERVER_NAME=$2
+    ####### Need to grep out replDest from below show command and test the value
+    EXIST=$(uemcli -noHeader -sslPolicy accept /net/nas/server -name ${NAS_SERVER_NAME} show)
+    #########
+    if [ "$EXIST" == REPLACEME ]; then
+        LOG_MSG="NAS Server '${NAS_SERVER_NAME}' is already set as a replication destination"
+        log "${LOG_MSG}" "${LOG_WRN}"
+        return 2
+    else
+        SET_DST_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/server -name ${NAS_SERVER_NAME} \
+            set -replDest yes)
+    fi
 }
 function nas_server_rep () {
     # Don't think I can do this, can we call a remote system?
-    local SRC_NAS_SERVER=$1
-    local DST_NAS_
 }
 function set_int_override () {
     local NAS_SERVER=$1
@@ -270,12 +290,10 @@ function fs_create () {
         POOL_SUB=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/config/pool show| grep Subscription | awk '{print $4}')
         if (( ${POOL_SUB%\%*} >= 100 )); then
             # Pool is oversubscribed, do not create
-            LOG_MSG="This NAS is already 100% subscribed or more.  Cannot create any more
-            filesystems"
+            LOG_MSG="This NAS is already 100% subscribed or more.  Cannot create any more filesystems"
             log "${LOG_MSG}" ${LOG_ERR}
         else
-            LOG_MSG="The pool is currently ${POOL_SUB} subscribed, continuing
-            with filesystem creation"
+            LOG_MSG="The pool is currently ${POOL_SUB} subscribed, continuing with filesystem creation"
             log "${LOG_MSG}"
             # Create Filesystem
             FS_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/prov/fs create -name ${NAME} -server \
@@ -286,9 +304,15 @@ function fs_create () {
             else
                 LOG_MSG="The filesystem '${NAME}' failed to create."
                 log "${LOG_MSG}" "${LOG_ERR}"
-                fi
             fi
         fi
+    fi
+}
+function ndmp_user_create () {
+    local UNITY=$1
+    local NAS_SERVER_ID=$2
+    EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/ndmp -server ${NAS_SERVER_ID}
+    show)
 }
 # Slice the files we need to read 
 # Unique NAS Servers first
@@ -364,7 +388,7 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; d
 	SEC_STYLE=${AC//\"/}
     # Just testing that I have the right variable:
 	echo "Variables inside the NAS Server loop"
-	echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} |${COB_UNITY}"
+	echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} | ${COB_UNITY}"
 	# Get the pool ID for use will all the commands
 	POOL_ID=$(uemcli -d ${PROD_UNITY} -noHeader -sslPolicy accept /stor/config/pool show | awk 'NR==1{print $4}')
 	if [ $POOL = $POOL_ID ]; then
