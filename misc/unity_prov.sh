@@ -17,6 +17,7 @@ LOG_WRN="WARN"
 DEF_DOMAIN="nam.nsroot.net"
 # Default OU is the NAS Team's OU
 DEF_OU="OU=Servers,OU=NAS,OU=GWIS,OU=INFRA"
+# Default CAVA Configuration File
 # TODO
 #
 # Steps to functionalize:
@@ -215,15 +216,35 @@ function cifs_server_create () {
     fi
 }
 function set_cava () {
-    local NAS_SERVER_ID=$1
-    local CAVA_CONFIG_FILE=$2
+    local UNITY=$1
+    local NAS_SERVER=$2
+    local NAS_SERVER_ID=$3
+    local CAVA_CONFIG_FILE=$4
     # First test to be sure the file exists
-    [ ! -f $CAVA_CONFIG_FILE ] && { log "Could not fine CAVA configuration file $CAVA_CONFIG_File"; exit 99; }
-    # need to download the file, compare to the required config
-    # edit if necessary
-    # then upload
-    CAVA_CONFIG=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept -upload f ${CAVA_CONFIG_FILE} /net/nas/cava -server ${NAS_SERVER_ID} -type config)
-    # Test result for success
+    [ ! -f $CAVA_CONFIG_FILE ] && \
+        { log "Could not fine CAVA configuration file $CAVA_CONFIG_File" "${LOG_ERR}"; exit 99; }
+    # This will replace the blanket viruschecker.conf file with the current NAS Server for upload
+    NEW="CIFSserver=${NAS_SERVER}"
+    sed -E -i .bak "s/^CIFSserver=[A-Z]{10}[0-9]{4}$/${NEW}/g" ${CAVA_CONFIG_FILE}
+    TEST=$(grep '^CIFSserver' ${CAVA_CONFIG_FILE})
+    if [ "$TEST" == "CIFSserver=${NAS_SERVER}" ]; then
+        ORIG=$(grep '^CIFSserver' ${CAVA_CONFIG_FILE}.bak)
+        LOG_MSG="Replaced original string '${ORIG}' with '${NEW}' in viruschecker.conf"
+        log "${LOG_MSG}"
+        CAVA_CONFIG=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept -upload f ${CAVA_CONFIG_FILE} /net/nas/cava \
+            -server ${NAS_SERVER_ID} -type config)
+        if [ $? -eq 0 ]; then
+            LOG_MSG="Uploaded CAVA configuration file '${CAVA_CONFIG_FILE}' successfully for ${NAS_SERVER}"
+            log "${LOG_MSG}"
+        else
+            LOG_MSG="Failed to upload CAVA configuration file '${CAVA_CONFIG_FILE}'"
+            log "${LOG_MSG}" "${LOG_ERR}"
+            return 1
+        fi
+    else
+        LOG_MSG="String replacement in '${CAVA_CONFIG_FILE}' did not work.  CAVA configuration for '${NAS_SERVER}' failed"
+        log "${LOG_MSG}" "${LOG_ERR}"
+    fi
 }
 function set_nas_server_dest () {
     local UNITY=$1
