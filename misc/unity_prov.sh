@@ -18,6 +18,11 @@ DEF_DOMAIN="nam.nsroot.net"
 # Default OU is the NAS Team's OU
 DEF_OU="OU=Servers,OU=NAS,OU=GWIS,OU=INFRA"
 # Default CAVA Configuration File
+DEF_CAVA_CONFIG="virtuschecker.conf"
+# Default DNS Server String
+DEF_DNS_STR="192.193.215.65,192.193.215.69,192.193.215.73"
+# Setting default interface type to "production"
+DEF_INT_TYPE="production"
 # TODO
 #
 # Steps to functionalize:
@@ -88,8 +93,8 @@ function nas_server_create_cifs () {
         return 1
     fi
     # Filter out the server ID from the creation result
-    # There seems to be an ID for each object, and a internal server ID
-    # the internal server ID gets returned when the server is created, so we
+    # There seems to be an ID for each object, and a internal server ID.
+    # The internal server ID gets returned when the server is created, so we
     # can use that and save us from running another query.
     NAS_SERVER_NFS_ID=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/nfs \
         -serverName ${NAS_SERVER_NAME} show | awk 'NR==1{print $4}')
@@ -115,7 +120,7 @@ function get_nas_server_id () {
     if [ $? -eq 0 ]; then
     	LOG_MSG="Found NAS Server '${NAS_SERVER_NAME}' with ID '${NAS_SERVER_ID}'"
     	log "${LOG_MSG}"
-		echo ${NAS_SERVER_ID}
+	echo ${NAS_SERVER_ID}
     else
         LOG_MSG="Failed to delete NFS server with ID '${NAS_SERVER_NFS_ID}' on '${NAS_SERVER_NAME}' "
         log "${LOG_MSG}" "${LOG_ERR}"
@@ -124,13 +129,13 @@ function get_nas_server_id () {
     fi
 }
 function nas_server_int_create () {
-	local UNITY=$1
-	local NAS_SERVER_NAME=$2
-	local FSN_PORT=$3
+    local UNITY=$1
+    local NAS_SERVER_NAME=$2
+    local FSN_PORT=$3
     local IP_ADDR=$4
     local IP_NETMASK=$5
     local IP_GW=$6
-	local ROLE=$7
+    local ROLE=${7:-${DEF_INT_TYPE}}
     # This will test to see if the interface exists already
     EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/if -serverName $NAS_SERVER_NAME \
     	show -output csv -filter "ID,IP address")
@@ -169,11 +174,14 @@ function set_dns () {
     local DNS_SERVER_STR=$3
     # First check to see if it's already configured
     $EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} show)
-    #
-    # If block to test result
-    #
-    $SET_DNS_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns \
-        -server ${NAS_SERVER_ID} set -name ${DOMAIN} ${DNS_SERVER_STR})
+    if [ -z $EXIST ]; then
+        # If nothing is in the variable, then no DNS is set
+        LOG_MSG="DNS is not setup for '${NAS_SERVER_ID}'"
+        log "${LOG_MSG}"
+        $SET_DNS_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns \
+            -server ${NAS_SERVER_ID} set -name ${DOMAIN} ${DNS_SERVER_STR})
+    else
+
     #
     # Test result of above command
     #
@@ -219,7 +227,7 @@ function set_cava () {
     local UNITY=$1
     local NAS_SERVER=$2
     local NAS_SERVER_ID=$3
-    local CAVA_CONFIG_FILE=$4
+    local CAVA_CONFIG_FILE=${4:-${DEF_CAVA_CONFIG}}
     # First test to be sure the file exists
     [ ! -f $CAVA_CONFIG_FILE ] && \
         { log "Could not fine CAVA configuration file $CAVA_CONFIG_File" "${LOG_ERR}"; exit 99; }
@@ -375,11 +383,11 @@ NAS_SERVERS="./${STAMP}_unity-nas-servers.tmp"
 # Security Style
 
 while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; do
-	# Skipping friendly names in the while statement
-	# Too many columns would make the line way too long
-	# We'll se friendly variable names here
-	VOLUME_STATUS=${A//\"/}
-	TC=${B//\"/}
+    # Skipping friendly names in the while statement
+    # Too many columns would make the line way too long
+    # We'll se friendly variable names here
+    VOLUME_STATUS=${A//\"/}
+    TC=${B//\"/}
     PROD_UNITY=${C//\"/}
     SP=${D//\"/}
     POOL=${E//\"/}
@@ -388,75 +396,73 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; d
     NAS_SERVER=${H//\"/}
     IP_ADDR=${I//\"/}
     IP_MASK=${J//\"/}
-	IP_GW=${K//\"/}
-	PROD_QIP=${L//\"/}
+    IP_GW=${K//\"/}
+    PROD_QIP=${L//\"/}
     FS_SIZE=${M//\"/}
-	COB_UNITY=${N//\"/}
-	COB_SP=${O//\"/}
-	COB_POOL=${P//\"/}
-	COB_FS=${Q//\"/}
-	COB_FSN=${R//\"/}
-	COB_NAS_SERVER=${S//\"/}
-	COB_IP_ADDR=${T//\"/}
-	COB_IP_MASK=${U//\"/}
-	COB_IP_GW=${V//\"/}
-	COB_QIP=${W//\"/}
-	QTREE=${X//\"/}
-	BKUP_QIP=${Y//\"/}
-	BKUP_IP_ADDR=${Z//\"/}
-	BKUP_IP_MASK=${AA//\"/}
-	BKUP_IP_GW=${AB//\"/}
-	SEC_STYLE=${AC//\"/}
+    COB_UNITY=${N//\"/}
+    COB_SP=${O//\"/}
+    COB_POOL=${P//\"/}
+    COB_FS=${Q//\"/}
+    COB_FSN=${R//\"/}
+    COB_NAS_SERVER=${S//\"/}
+    COB_IP_ADDR=${T//\"/}
+    COB_IP_MASK=${U//\"/}
+    COB_IP_GW=${V//\"/}
+    COB_QIP=${W//\"/}
+    QTREE=${X//\"/}
+    BKUP_QIP=${Y//\"/}
+    BKUP_IP_ADDR=${Z//\"/}
+    BKUP_IP_MASK=${AA//\"/}
+    BKUP_IP_GW=${AB//\"/}
+    SEC_STYLE=${AC//\"/}
     # Just testing that I have the right variable:
-	echo "Variables inside the NAS Server loop"
-	echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} | ${COB_UNITY}"
-	# Get the pool ID for use will all the commands
-	POOL_ID=$(uemcli -d ${PROD_UNITY} -noHeader -sslPolicy accept /stor/config/pool show | awk 'NR==1{print $4}')
-	if [ $POOL = $POOL_ID ]; then
-		LOG_MSG="The pool ID in the input file '${POOL}' matches the pool ID on the system '${POOL_ID}'"
+    echo "Variables inside the NAS Server loop"
+    echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} | ${COB_UNITY}"
+    # Get the pool ID for use will all the commands
+    POOL_ID=$(uemcli -d ${PROD_UNITY} -noHeader -sslPolicy accept /stor/config/pool show | awk 'NR==1{print $4}')
+    if [ $POOL = $POOL_ID ]; then
+	LOG_MSG="The pool ID in the input file '${POOL}' matches the pool ID on the system '${POOL_ID}'"
     	log "${LOG_MSG}"
-	else
-		# Lab box has multiple pools, but not expected on the prod boxes
-		# Could add a check for multiple pools, but would need to change the query above
-		LOG_MSG="The pool ID in the input file '${POOL}' does not matche the pool ID on the system '${POOL_ID}'"
+    else
+	# Lab box has multiple pools, but not expected on the prod boxes
+	# Could add a check for multiple pools, but would need to change the query above
+	LOG_MSG="The pool ID in the input file '${POOL}' does not matche the pool ID on the system '${POOL_ID}'"
     	log "${LOG_MSG}" "${LOG_WRN}"
-		LOG_MSG="We will use the pool ID queried from the system"
+	LOG_MSG="We will use the pool ID queried from the system"
     	log "${LOG_MSG}" "${LOG_WRN}"
-	fi	
-	# Get FSN devices from each SP
+    fi	
+    # Get FSN devices from each SP
     # Is this going to work?  Doesn't seem to read line-by-line
     #FSN_DEVICES=$(uemcli -d ${PROD_UNITY} -noHeader -sslPolicy accept /net/fsn show -output csv -filter "SP,ID")
     SPA_FSN=$(echo "$FSN_DEVICES" | awk -F, '$1 == "\"spa\"" {print $2}')
     SPB_FSN=$(echo "$FSN_DEVICES" | awk -F, '$1 == "\"spb\"" {print $2}')
-	# Start by creating the nas server
-	NEW_NAS_SERVER_ID=$(nas_server_create_cifs "${UNITY}" "${NAS_SERVER}" "${SP}" "${POOL_ID}")
-	if [ $NEW_NAS_SERVER_ID == 1 ]; then
-		LOG_MSG="The function 'nas_server_create_cifs' failed to create '${NAS_SERVER}'"
-		log "${LOG_MSG}"
-		continue
-	fi
-	if [ ${SP} == "SPA" ]; then
-		RESULT=$(nas_server_int_create "${UNITY}" "${NAS_SERVER}" "${SPA_FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}" "production")
-	elif [ ${SP} == "SPB" ]; then
-		RESULT=$(nas_server_int_create "${UNITY}" "${NAS_SERVER}" "${SPB_FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}" "production")
-	fi
-	
-
+    # Start by creating the nas server
+    NEW_NAS_SERVER_ID=$(nas_server_create_cifs "${UNITY}" "${NAS_SERVER}" "${SP}" "${POOL_ID}")
+    if [ $NEW_NAS_SERVER_ID == 1 ]; then
+    	LOG_MSG="The function 'nas_server_create_cifs' failed to create '${NAS_SERVER}'"
+    	log "${LOG_MSG}"
+    	continue
+    fi
+    if [ ${SP} == "SPA" ]; then
+	RESULT=$(nas_server_int_create "${UNITY}" "${NAS_SERVER}" "${SPA_FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}" "production")
+    elif [ ${SP} == "SPB" ]; then
+	RESULT=$(nas_server_int_create "${UNITY}" "${NAS_SERVER}" "${SPB_FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}" "production")
+    fi	
     # Check to see if the nas server exists
     # then create if it doesn't
     # slice the input file based on the NAS server
     # for loop for all filesystems
     #NAS_SERVER_ID=$(nas_server_create_cifs "${PROD_UNITY}" "${NAS_SERVER}" "${SP}" "${POOL_ID}") 
-	#echo "returned nas server id:  ${NAS_SERVER_ID}"
+    #echo "returned nas server id:  ${NAS_SERVER_ID}"
 done < $NAS_SERVERS
 # This next loop will iterate over the entire input file
 # All filesystem related operations go here.
 while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; do
-	# Skipping friendly names in the while statement
-	# Too many columns would make the line way too long
-	# We'll se friendly variable names here
-	VOLUME_STATUS=${A//\"/}
-	TC=${B//\"/}
+    # Skipping friendly names in the while statement
+    # Too many columns would make the line way too long
+    # We'll se friendly variable names here
+    VOLUME_STATUS=${A//\"/}
+    TC=${B//\"/}
     PROD_UNITY=${C//\"/}
     SP=${D//\"/}
     POOL=${E//\"/}
@@ -465,27 +471,27 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; d
     NAS_SERVER=${H//\"/}
     IP_ADDR=${I//\"/}
     IP_MASK=${J//\"/}
-	IP_GW=${K//\"/}
-	PROD_QIP=${L//\"/}
+    IP_GW=${K//\"/}
+    PROD_QIP=${L//\"/}
     FS_SIZE=${M//\"/}
-	COB_UNITY=${N//\"/}
-	COB_SP=${O//\"/}
-	COB_POOL=${P//\"/}
-	COB_FS=${Q//\"/}
-	COB_FSN=${R//\"/}
-	COB_NAS_SERVER=${S//\"/}
-	COB_IP_ADDR=${T//\"/}
-	COB_IP_MASK=${U//\"/}
-	COB_IP_GW=${V//\"/}
-	COB_QIP=${W//\"/}
-	QTREE=${X//\"/}
-	BKUP_QIP=${Y//\"/}
-	BKUP_IP_ADDR=${Z//\"/}
-	BKUP_IP_MASK=${AA//\"/}
-	BKUP_IP_GW=${AB//\"/}
-	SEC_STYLE=${AC//\"/}
-	echo "Variables inside the Filesystem loop"
-	echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} |${COB_UNITY}"
+    COB_UNITY=${N//\"/}
+    COB_SP=${O//\"/}
+    COB_POOL=${P//\"/}
+    COB_FS=${Q//\"/}
+    COB_FSN=${R//\"/}
+    COB_NAS_SERVER=${S//\"/}
+    COB_IP_ADDR=${T//\"/}
+    COB_IP_MASK=${U//\"/}
+    COB_IP_GW=${V//\"/}
+    COB_QIP=${W//\"/}
+    QTREE=${X//\"/}
+    BKUP_QIP=${Y//\"/}
+    BKUP_IP_ADDR=${Z//\"/}
+    BKUP_IP_MASK=${AA//\"/}
+    BKUP_IP_GW=${AB//\"/}
+    SEC_STYLE=${AC//\"/}
+    echo "Variables inside the Filesystem loop"
+    echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} |${COB_UNITY}"
     if [ "$CURRENT_NAS_SERVER" == "$NAS_SERVER" ]; then
         # No need to go get its ID, since we already have it in the loop
         LOG_MSG="Already have NAS Server ID for '${NAS_SERVER}': '${CURRENT_NAS_SERVER_ID}'"
