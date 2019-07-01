@@ -545,5 +545,4 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC AD
     #echo "${PROD_UNITY} | ${FS} | ${CURRENT_NAS_SERVER_ID} | ${POOL} | ${FS_SIZE} | ${SEC_STYLE}"
     # Filesystem creation
     RESULT=$(fs_create "${PROD_UNITY}" "${FS}" "${CURRENT_NAS_SERVER_ID}" "${POOL}" "${FS_SIZE}" "${SEC_STYLE}")
-
 done < $INFILE
