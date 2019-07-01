@@ -59,7 +59,7 @@ function log () {
     local LEVEL=${2:-${LOG_DEF}}
     local STAMP=$(date "+%Y-%m-%d %H:%M:%S")
     local LINE="${STAMP} | ${LEVEL} | ${MESSAGE}"
-    echo ${LINE} | tee "${LOGFILE}"
+    echo ${LINE} | tee -a "${LOGFILE}"
 }
 # Create the NAS Server
 function nas_server_create_cifs () {
@@ -116,10 +116,10 @@ function get_nas_server_id () {
 	local UNITY=$1
 	local NAS_SERVER_NAME=$2
 	NAS_SERVER_ID=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/server -name ${NAS_SERVER_NAME} show | \
-		awk 'NR==1{print $4}')
+	    awk 'NR==1{print $4}')
     if [ $? -eq 0 ]; then
-    	LOG_MSG="Found NAS Server '${NAS_SERVER_NAME}' with ID '${NAS_SERVER_ID}'"
-    	log "${LOG_MSG}"
+    	#LOG_MSG="Found NAS Server '${NAS_SERVER_NAME}' with ID '${NAS_SERVER_ID}'"
+    	#log "${LOG_MSG}"
 	echo ${NAS_SERVER_ID}
     else
         LOG_MSG="Failed to delete NFS server with ID '${NAS_SERVER_NFS_ID}' on '${NAS_SERVER_NAME}' "
@@ -142,15 +142,15 @@ function nas_server_int_create () {
     if [ $? -eq 0 ]; then
         LOG_MSG="Some intefaces on NAS Server '${NAS_SERVER_NAME}' already exist"
         log "${LOG_MSG}"
-		$EXISTING_IP_MATCH=$(echo "$EXIST" | awk -F, '$2 == "\"$IP_ADDR\"" {print $2}')
-		if [ -z ${EXISTING_IP_MATCH} ]; then
-			LOG_MSG="Did not find an existing interface with IP '${IP_ADDR}'"
-			log "${LOG_MSG}"
-		else
-			LOG_MSG="Found existing interface with IP '${IP_ADDR}'"
-			log "${LOG_MSG}"
-			return 1
-		fi
+	$EXISTING_IP_MATCH=$(echo "$EXIST" | awk -F, '$2 == "\"$IP_ADDR\"" {print $2}')
+	if [ -z ${EXISTING_IP_MATCH} ]; then
+		LOG_MSG="Did not find an existing interface with IP '${IP_ADDR}'"
+		log "${LOG_MSG}"
+	else
+		LOG_MSG="Found existing interface with IP '${IP_ADDR}'"
+		log "${LOG_MSG}"
+		return 1
+	fi
     fi
     # The below returns the ID of the interface created
     # do we need this for anything?
@@ -160,7 +160,7 @@ function nas_server_int_create () {
         NAS_IF_ID=$(awk '{print $3}' <<< $(echo ${IF_CREATE_RESULT}))
         LOG_MSG="Interface ${IP_ADDR} on ${NAS_SERVER_NAME} created successfully"
         log "${LOG_MSG}"
-		echo "${NAS_IF_ID}"
+	echo "${NAS_IF_ID}"
     else
         LOG_MSG="Interface '${IP_ADDR}' failed to create on '${NAS_SERVER_NAME}'"
         log "${LOG_MSG}" "${LOG_ERR}"
@@ -173,14 +173,15 @@ function set_dns () {
     local DOMAIN=$2
     local DNS_SERVER_STR=$3
     # First check to see if it's already configured
-    $EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} show)
-    if [ -z $EXIST ]; then
+    #EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} show)
+    #if [ -z $EXIST ]; then
         # If nothing is in the variable, then no DNS is set
-        LOG_MSG="DNS is not setup for '${NAS_SERVER_ID}'"
-        log "${LOG_MSG}"
-        $SET_DNS_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns \
-            -server ${NAS_SERVER_ID} set -name ${DOMAIN} ${DNS_SERVER_STR})
-    else
+     #   LOG_MSG="DNS is not setup for '${NAS_SERVER_ID}'"
+      #  log "${LOG_MSG}"
+      #  SET_DNS_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns \
+            #-server ${NAS_SERVER_ID} set -name ${DOMAIN} ${DNS_SERVER_STR})
+   # else
+    #fi
 
     #
     # Test result of above command
@@ -269,9 +270,9 @@ function set_nas_server_dest () {
             set -replDest yes)
     fi
 }
-function nas_server_rep () {
-    # Don't think I can do this, can we call a remote system?
-}
+#function nas_server_rep () {
+#    # Don't think I can do this, can we call a remote system?
+#}
 function set_int_override () {
     local NAS_SERVER=$1
     # I think all of the properties we need can be queried
@@ -289,16 +290,16 @@ function set_int_override () {
         -port ${FSN} -addr ${IP_ADDR} -netmask ${IP_MASK} -gateway ${IP_GW} -replSync overridden})
 }
 function fs_create () {
-    local NAME=$1
-    local NAS_SERVER_ID=$2
-    local POOL=$3
+    local UNITY=$1
+    local NAME=$2
+    local NAS_SERVER_ID=$3
+    local POOL_ID=$4
     # Size is always expected in GB
-    local SIZE=$4
-    local TYPE=$5
+    local SIZE=$5
+    local TYPE=$6
     # Let's check to be sure the FS size isn't too crazy
-    if (( ${SIZE} > 1024 )); then
-        LOG_MSG="Filesystem size specified is ${SIZE}GB, this is too large to
-        create"
+    if (( $SIZE > 1536 )); then
+        LOG_MSG="Filesystem size specified is ${SIZE}GB, this is too large to create"
         log "${LOG_MSG}" ${LOG_ERR}
         return 1
     fi
@@ -321,18 +322,21 @@ function fs_create () {
             # Pool is oversubscribed, do not create
             LOG_MSG="This NAS is already 100% subscribed or more.  Cannot create any more filesystems"
             log "${LOG_MSG}" ${LOG_ERR}
+            return 1
         else
             LOG_MSG="The pool is currently ${POOL_SUB} subscribed, continuing with filesystem creation"
             log "${LOG_MSG}"
             # Create Filesystem
+            #echo "Command: uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/prov/fs create -name ${NAME} -server  ${NAS_SERVER_ID} -pool ${POOL_ID} -size ${SIZE}G -dataReduction yes -advnacedDedupe yes -type ${TYPE}"
             FS_CREATE=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/prov/fs create -name ${NAME} -server \
-                ${NAS_SERVER_ID} -pool ${POOL_ID} -size ${SIZE}G -dataReduction yes -advnacedDedupe yes -type ${TYPE})
+                ${NAS_SERVER_ID} -pool ${POOL_ID} -size ${SIZE}G -dataReduction yes -advancedDedup yes -type ${TYPE})
             if [ $? -eq 0 ]; then
                  LOG_MSG="The filesystem '${NAME}' was created successfully!"
                  log "${LOG_MSG}"
             else
                 LOG_MSG="The filesystem '${NAME}' failed to create."
                 log "${LOG_MSG}" "${LOG_ERR}"
+                log "${FS_CREATE}"
             fi
         fi
     fi
@@ -345,7 +349,7 @@ function ndmp_user_create () {
 }
 # Slice the files we need to read 
 # Unique NAS Servers first
-awk -F, '!seen[$3]++' $INFILE > ${STAMP}_unity-nas-servers.tmp
+awk -F, '!seen[$8]++' $INFILE > ${STAMP}_unity-nas-servers.tmp
 NAS_SERVERS="./${STAMP}_unity-nas-servers.tmp"
 
 # This first while loop will be operating on the unique list of 
@@ -386,7 +390,6 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; d
     # Skipping friendly names in the while statement
     # Too many columns would make the line way too long
     # We'll se friendly variable names here
-    VOLUME_STATUS=${A//\"/}
     TC=${B//\"/}
     PROD_UNITY=${C//\"/}
     SP=${D//\"/}
@@ -416,17 +419,17 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; d
     BKUP_IP_GW=${AB//\"/}
     SEC_STYLE=${AC//\"/}
     # Just testing that I have the right variable:
-    echo "Variables inside the NAS Server loop"
-    echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} | ${COB_UNITY}"
+    #echo "Variables inside the NAS Server loop"
+    #echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} | ${COB_UNITY}"
     # Get the pool ID for use will all the commands
     POOL_ID=$(uemcli -d ${PROD_UNITY} -noHeader -sslPolicy accept /stor/config/pool show | awk 'NR==1{print $4}')
-    if [ $POOL = $POOL_ID ]; then
+    if [ "$POOL" = "$POOL_ID" ]; then
 	LOG_MSG="The pool ID in the input file '${POOL}' matches the pool ID on the system '${POOL_ID}'"
     	log "${LOG_MSG}"
     else
 	# Lab box has multiple pools, but not expected on the prod boxes
 	# Could add a check for multiple pools, but would need to change the query above
-	LOG_MSG="The pool ID in the input file '${POOL}' does not matche the pool ID on the system '${POOL_ID}'"
+	LOG_MSG="The pool ID in the input file '${POOL}' does not match the pool ID on the system '${POOL_ID}'"
     	log "${LOG_MSG}" "${LOG_WRN}"
 	LOG_MSG="We will use the pool ID queried from the system"
     	log "${LOG_MSG}" "${LOG_WRN}"
@@ -434,20 +437,23 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; d
     # Get FSN devices from each SP
     # Is this going to work?  Doesn't seem to read line-by-line
     #FSN_DEVICES=$(uemcli -d ${PROD_UNITY} -noHeader -sslPolicy accept /net/fsn show -output csv -filter "SP,ID")
-    SPA_FSN=$(echo "$FSN_DEVICES" | awk -F, '$1 == "\"spa\"" {print $2}')
-    SPB_FSN=$(echo "$FSN_DEVICES" | awk -F, '$1 == "\"spb\"" {print $2}')
+    #SPA_FSN=$(echo "$FSN_DEVICES" | awk -F, '$1 == "\"spa\"" {print $2}')
+    #SPB_FSN=$(echo "$FSN_DEVICES" | awk -F, '$1 == "\"spb\"" {print $2}')
+    # Var test
+    #echo "${PROD_UNITY} | ${NAS_SERVER} | ${SP} | ${POOL_ID}"
     # Start by creating the nas server
-    NEW_NAS_SERVER_ID=$(nas_server_create_cifs "${UNITY}" "${NAS_SERVER}" "${SP}" "${POOL_ID}")
-    if [ $NEW_NAS_SERVER_ID == 1 ]; then
+    NEW_NAS_SERVER_ID=$(nas_server_create_cifs "${PROD_UNITY}" "${NAS_SERVER}" "${SP}" "${POOL_ID}")
+    if [ "$NEW_NAS_SERVER_ID" == 1 ]; then
     	LOG_MSG="The function 'nas_server_create_cifs' failed to create '${NAS_SERVER}'"
     	log "${LOG_MSG}"
     	continue
     fi
-    if [ ${SP} == "SPA" ]; then
-	RESULT=$(nas_server_int_create "${UNITY}" "${NAS_SERVER}" "${SPA_FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}" "production")
-    elif [ ${SP} == "SPB" ]; then
-	RESULT=$(nas_server_int_create "${UNITY}" "${NAS_SERVER}" "${SPB_FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}" "production")
-    fi	
+    # These need to be uncommented for production runs
+    #if [ ${SP} == "SPA" ]; then
+    #	RESULT=$(nas_server_int_create "${UNITY}" "${NAS_SERVER}" "${SPA_FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}" "production")
+    #elif [ ${SP} == "SPB" ]; then
+    #	RESULT=$(nas_server_int_create "${UNITY}" "${NAS_SERVER}" "${SPB_FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}" "production")
+    #fi	
     # Check to see if the nas server exists
     # then create if it doesn't
     # slice the input file based on the NAS server
@@ -457,48 +463,76 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; d
 done < $NAS_SERVERS
 # This next loop will iterate over the entire input file
 # All filesystem related operations go here.
-while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; do
+while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC AD; do
     # Skipping friendly names in the while statement
     # Too many columns would make the line way too long
     # We'll se friendly variable names here
-    VOLUME_STATUS=${A//\"/}
     TC=${B//\"/}
+    echo "TC = ${TC}"
     PROD_UNITY=${C//\"/}
+    echo "PROD_UNITY = ${PROD_UNITY}"
     SP=${D//\"/}
+    echo "SP = ${SP}"
     POOL=${E//\"/}
+    echo "POOL = ${POOL}"
     FS=${F//\"/}
+    echo "FS = ${FS}"
     FSN=${G//\"/}
+    echo "FSN = ${FSN}"
     NAS_SERVER=${H//\"/}
+    echo "NAS_SERVER = ${NAS_SERVER}"
     IP_ADDR=${I//\"/}
+    echo "IP_ADDR = ${IP_ADDR}"
     IP_MASK=${J//\"/}
+    echo "IP_MASK = ${IP_MASK}"
     IP_GW=${K//\"/}
+    echo "IP_GW = ${IP_GW}"
     PROD_QIP=${L//\"/}
+    echo "PROD_QIP = ${PROD_QIP}"
     FS_SIZE=${M//\"/}
+    echo "FS_SIZE = ${FS_SIZE}"
     COB_UNITY=${N//\"/}
+    echo "COB_UNITY = ${COB_UNITY}"
     COB_SP=${O//\"/}
+    echo "COB_SP = ${COB_SP}"
     COB_POOL=${P//\"/}
+    echo "COB_POOL = ${COB_POOL}"
     COB_FS=${Q//\"/}
+    echo "COB_FS = ${COB_FS}"
     COB_FSN=${R//\"/}
+    echo "COB_FSN = ${COB_FSN}"
     COB_NAS_SERVER=${S//\"/}
+    echo "COB_NAS_SERVER = ${COB_NAS_SERVER}"
     COB_IP_ADDR=${T//\"/}
+    echo "COB_IP_ADDR = ${COB_IP_ADDR}"
     COB_IP_MASK=${U//\"/}
+    echo "COB_IP_MASK = ${COB_IP_MASK}"
     COB_IP_GW=${V//\"/}
+    echo "COB_IP_GW = ${COB_IP_GW}"
     COB_QIP=${W//\"/}
+    echo "COB_QIP = ${COB_QIP}"
     QTREE=${X//\"/}
+    echo "QTREE = ${QTREE}"
     BKUP_QIP=${Y//\"/}
+    echo "BKUP_QIP = ${BKUP_QIP}"
     BKUP_IP_ADDR=${Z//\"/}
+    echo "BKUP_IP_ADDR = ${BKUP_IP_ADDR}"
     BKUP_IP_MASK=${AA//\"/}
+    echo "BKUP_IP_MASK = ${BKUP_IP_MASK}"
     BKUP_IP_GW=${AB//\"/}
+    echo "BKUP_IP_GW = ${BKUP_IP_GW}"
     SEC_STYLE=${AC//\"/}
-    echo "Variables inside the Filesystem loop"
-    echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} |${COB_UNITY}"
+    echo "SEC_STYLE = ${SEC_STYLE}"
+    #echo "Variables inside the Filesystem loop"
+    #echo "${PROD_UNITY} | ${SP} | ${NAS_SERVER} | ${FS} | ${FS_SIZE} | ${FS_TYPE} | ${IP_ADDR} | ${IP_MASK} | ${IP_GW} |${COB_UNITY}"
     if [ "$CURRENT_NAS_SERVER" == "$NAS_SERVER" ]; then
         # No need to go get its ID, since we already have it in the loop
         LOG_MSG="Already have NAS Server ID for '${NAS_SERVER}': '${CURRENT_NAS_SERVER_ID}'"
         log "${LOG_MSG}"
     else
+        CURRENT_NAS_SERVER=${NAS_SERVER}
         # The current NAS Server doesn't match this row, so we'll need to query
-	    CURRENT_NAS_SERVER_ID=$(get_nas_server_id "${PROD_UNITY}" "${NAS_SERVER}")
+    	CURRENT_NAS_SERVER_ID=$(get_nas_server_id "${PROD_UNITY}" "${NAS_SERVER}")
         if [ $? -eq 0 ]; then
             LOG_MSG="Found NAS Server for '${NAS_SERVER}': '${CURRENT_NAS_SERVER_ID}'"
             log "${LOG_MSG}"
@@ -507,6 +541,10 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; d
             log "${LOG_MSG}" "${LOG_ERR}"
         fi
     fi
+    # var test
+    #echo "${PROD_UNITY} | ${FS} | ${CURRENT_NAS_SERVER_ID} | ${POOL} | ${FS_SIZE} | ${SEC_STYLE}"
+    # Filesystem creation
+    RESULT=$(fs_create "${PROD_UNITY}" "${FS}" "${CURRENT_NAS_SERVER_ID}" "${POOL}" "${FS_SIZE}" "${SEC_STYLE}")
 
 	
 done < $INFILE
