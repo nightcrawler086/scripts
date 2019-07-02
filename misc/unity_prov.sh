@@ -14,7 +14,7 @@ LOG_DEF="INFO"
 LOG_ERR="ERROR"
 LOG_WRN="WARN"
 # Default Domain for CIFS servers is NAM
-DEF_DOMAIN="nam.nsroot.net"
+DEF_DNS_DOMAIN="nam.nsroot.net"
 # Default OU is the NAS Team's OU
 DEF_OU="OU=Servers,OU=NAS,OU=GWIS,OU=INFRA"
 # Default CAVA Configuration File
@@ -68,7 +68,7 @@ function nas_server_create_cifs () {
     local SP=$3
     local POOL_ID=$4
     # This will test to see if the NAS Server exists already
-    EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/server -name ${NAS_SERVER_NAME} show)
+    NAS_SERVER_EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/server -name ${NAS_SERVER_NAME} show)
     if [ $? -eq 0 ]; then
          LOG_MSG="NAS Server '${NAS_SERVER_NAME}' already exists!"
          log "${LOG_MSG}"
@@ -80,12 +80,12 @@ function nas_server_create_cifs () {
     # Create the server
     LOG_MSG="Attempting to create NAS Server '${NAS_SERVER_NAME}'"
     log "${LOG_MSG}"
-    NAS_CREATE_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/server create \
-        -name ${NAS_SERVER_NAME} -sp ${SP} -pool ${POOL_ID} -enablePacketReflect yes)
+    NAS_CREATE_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/server create -name ${NAS_SERVER_NAME} -sp ${SP} -pool ${POOL_ID} -enablePacketReflect yes)
     if [ $? -eq 0 ]; then
          NAS_SERVER_ID=$(awk '{print $3}' <<< $(echo ${NAS_CREATE_RESULT}))
          LOG_MSG="NAS Server ${NAS_SERVER_NAME} created with ID: ${NAS_SERVER_ID}"
          log "${LOG_MSG}"
+         echo "${NAS_SERVER_ID}"
     else
         LOG_MSG="NAS Server ${NAS_SERVER_NAME} failed to create with the following error"
         log "${LOG_MSG}" "${LOG_ERR}"
@@ -135,14 +135,13 @@ function nas_server_int_create () {
     local IP_ADDR=$4
     local IP_NETMASK=$5
     local IP_GW=$6
-    local ROLE=${7:-${DEF_INT_TYPE}}
+    local INT_ROLE=${7:-${DEF_INT_TYPE}}
     # This will test to see if the interface exists already
-    EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/if -serverName $NAS_SERVER_NAME \
-    	show -output csv -filter "ID,IP address")
+    INT_EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/if -serverName ${NAS_SERVER_NAME} show -output csv -filter "ID,IP address")
     if [ $? -eq 0 ]; then
         LOG_MSG="Some intefaces on NAS Server '${NAS_SERVER_NAME}' already exist"
         log "${LOG_MSG}"
-	$EXISTING_IP_MATCH=$(echo "$EXIST" | awk -F, '$2 == "\"$IP_ADDR\"" {print $2}')
+	EXISTING_IP_MATCH=$(echo "$INT_EXIST" | awk -F, '$2 == "\"$IP_ADDR\"" {print $2}')
 	if [ -z ${EXISTING_IP_MATCH} ]; then
 		LOG_MSG="Did not find an existing interface with IP '${IP_ADDR}'"
 		log "${LOG_MSG}"
@@ -154,8 +153,8 @@ function nas_server_int_create () {
     fi
     # The below returns the ID of the interface created
     # do we need this for anything?
-    IF_CREATE_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/if create -serverName \
-        ${NAS_SERVER_NAME} -port ${FSN_PORT} -addr ${IP_ADDR} -netmask ${IP_NETMASK} -gateway ${IP_GW} -role backup)
+    echo "uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/if create -serverName ${NAS_SERVER_NAME} -port ${FSN_PORT} -addr ${IP_ADDR} -netmask ${IP_NETMASK} -gateway ${IP_GW} -role ${INT_ROLE}"
+    IF_CREATE_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/if create -serverName ${NAS_SERVER_NAME} -port ${FSN_PORT} -addr ${IP_ADDR} -netmask ${IP_NETMASK} -gateway ${IP_GW} -role ${INT_ROLE})
     if [ $? -eq 0 ]; then
         NAS_IF_ID=$(awk '{print $3}' <<< $(echo ${IF_CREATE_RESULT}))
         LOG_MSG="Interface ${IP_ADDR} on ${NAS_SERVER_NAME} created successfully"
@@ -169,23 +168,22 @@ function nas_server_int_create () {
     fi
 }
 function set_dns () {
-    local NAS_SERVER_ID=$1
-    local DOMAIN=$2
-    local DNS_SERVER_STR=$3
+    local UNITY=$1
+    local NAS_SERVER_ID=$2
+    local DOMAIN=$3
+    local DNS_SERVER_STR=$4
     # First check to see if it's already configured
-    #EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} show)
-    #if [ -z $EXIST ]; then
+    DNS_EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} show)
+    if [ -z "${DNS_EXIST}" ]; then
         # If nothing is in the variable, then no DNS is set
-     #   LOG_MSG="DNS is not setup for '${NAS_SERVER_ID}'"
-      #  log "${LOG_MSG}"
-      #  SET_DNS_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns \
-            #-server ${NAS_SERVER_ID} set -name ${DOMAIN} ${DNS_SERVER_STR})
-   # else
-    #fi
-
-    #
-    # Test result of above command
-    #
+        LOG_MSG="DNS is not setup for '${NAS_SERVER_ID}'"
+        log "${LOG_MSG}"
+        SET_DNS_RESULT=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/dns -server ${NAS_SERVER_ID} set -name ${DOMAIN}
+        -nameServer ${DNS_SERVER_STR})
+    else
+        LOG_MSG="DNS is already configured for '${NAS_SERVER_ID}'"
+        log "${LOG_MSG}"
+    fi
 }
 function cifs_server_create () {
     # cifs_server_create { ${UNITY} ${NAS_SERVER} ${USER} } [ ${CIFS_SERVER} ${NETBIOS} ${DOMAIM} ${OU} ]
@@ -304,7 +302,7 @@ function fs_create () {
         return 1
     fi
     # Does FS exist?
-    EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/prov/fs -name ${NAME} show)
+    FS_EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /stor/prov/fs -name ${NAME} show)
     if [ $? -eq 0 ]; then
          LOG_MSG="The filesystem '${NAME}' already exists!"
          log "${LOG_MSG}" ${LOG_ERR}
@@ -344,7 +342,7 @@ function fs_create () {
 function ndmp_user_create () {
     local UNITY=$1
     local NAS_SERVER_ID=$2
-    EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/ndmp -server ${NAS_SERVER_ID}
+    NDMP_EXIST=$(uemcli -d ${UNITY} -noHeader -sslPolicy accept /net/nas/ndmp -server ${NAS_SERVER_ID}
     show)
 }
 # Slice the files we need to read 
@@ -450,10 +448,17 @@ while IFS=, read A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA AB AC; d
     fi
     # These need to be uncommented for production runs
     #if [ ${SP} == "SPA" ]; then
-    #	RESULT=$(nas_server_int_create "${UNITY}" "${NAS_SERVER}" "${SPA_FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}" "production")
+        # There is a 7th argument below that is not being passed, which is the interface role
+        # The default role, set at the top of this script, is "production"
+        # This is just to make this work in my lab
+        FSN="spa_eth1"
+    	RESULT=$(nas_server_int_create "${PROD_UNITY}" "${NAS_SERVER}" "${FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}")
+        echo "${RESULT}"
     #elif [ ${SP} == "SPB" ]; then
     #	RESULT=$(nas_server_int_create "${UNITY}" "${NAS_SERVER}" "${SPB_FSN}" "${IP_ADDR}" "${IP_MASK}" "${IP_GW}" "production")
     #fi	
+    echo "Setting DNS on NAS Server ID: ${NEW_NAS_SERVER_ID}"
+    DNS_RES=$(set_dns "${PROD_UNITY}" "${NEW_NAS_SERVER_ID}" "${DEF_DNS_DOMAIN}" "${DEF_DNS_STR}")
     # Check to see if the nas server exists
     # then create if it doesn't
     # slice the input file based on the NAS server
